@@ -86,9 +86,9 @@ func (s *Server) handlePresenter(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, err := template.New("presenter.html").Funcs(template.FuncMap{
 		"safe": func(content string) template.HTML { return template.HTML(content) },
-		"json": func(v interface{}) (string, error) {
+		"json": func(v interface{}) (template.JS, error) {
 			b, err := json.Marshal(v)
-			return string(b), err
+			return template.JS(b), err
 		},
 	}).ParseFS(web.Assets, "templates/presenter.html")
 	if err != nil {

@@ -78,6 +78,12 @@ Here is details.
 		if !strings.Contains(body, "Notes for slide 1") {
 			t.Errorf("expected speaker notes payload, got: %s", body)
 		}
+		if strings.Contains(body, "&#34;Index&#34;") || strings.Contains(body, "&quot;Index&quot;") {
+			t.Errorf("JSON in presenter view was HTML-escaped: %s", body)
+		}
+		if !strings.Contains(body, `"Index":0`) {
+			t.Errorf("expected unescaped JSON slide payload, got: %s", body)
+		}
 	})
 
 	// 3. Test POST /api/slide
