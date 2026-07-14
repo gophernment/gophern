@@ -85,6 +85,12 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 		}
 	}
 
+	md := goldmark.New(
+		goldmark.WithRendererOptions(
+			html.WithUnsafe(),
+		),
+	)
+
 	slideIdx := 0
 	for i := 0; i < len(remainingBlocks); {
 		block := remainingBlocks[i]
@@ -121,11 +127,6 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 		}
 
 		var htmlBuf bytes.Buffer
-		md := goldmark.New(
-			goldmark.WithRendererOptions(
-				html.WithUnsafe(),
-			),
-		)
 		if err := md.Convert([]byte(slide.RawMarkdown), &htmlBuf); err == nil {
 			slide.HTMLContent = htmlBuf.String()
 		}
