@@ -10,6 +10,7 @@ import (
 func TestAssetsExist(t *testing.T) {
 	files := []string{
 		"templates/presentation.html",
+		"templates/presenter.html",
 		"static/css/styles.css",
 		"static/js/app.js",
 	}

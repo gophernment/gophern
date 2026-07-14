@@ -6,7 +6,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/gophernment/gophern/internal/server"
 )
+
+var startServer = func(markdownFile, port string, stdout io.Writer) error {
+	return server.Start(markdownFile, port, stdout)
+}
+
 
 func main() {
 	if err := run(os.Args, os.Stdout, os.Stderr); err != nil {
@@ -40,7 +47,9 @@ func run(args []string, stdout, stderr io.Writer) error {
 		}
 		markdownFile := serveCmd.Arg(0)
 		fmt.Fprintf(stdout, "Serving %s on port %s...\n", markdownFile, *port)
-		// Handled in later tasks
+		if err := startServer(markdownFile, *port, stdout); err != nil {
+			return err
+		}
 		return nil
 
 	case "export":
