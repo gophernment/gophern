@@ -46,6 +46,11 @@ func TestMarkdownToHTML_EdgeCases(t *testing.T) {
 			markdownInput: "```go\n```",
 			wantContains:  []string{"<pre"},
 		},
+		{
+			name:          "markdown table rendering",
+			markdownInput: "| Header 1 | Header 2 |\n|---|---|\n| Cell 1 | Cell 2 |",
+			wantContains:  []string{"<table>", "<thead>", "<th>Header 1</th>", "<tbody>", "<td>Cell 1</td>"},
+		},
 	}
 
 	for _, tt := range tests {

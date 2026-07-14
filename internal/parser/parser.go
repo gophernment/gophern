@@ -10,6 +10,7 @@ import (
 	"github.com/alecthomas/chroma/v2/styles"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/util"
@@ -303,6 +304,9 @@ func extractSpeakerNotes(markdown string) (string, string) {
 }
 
 var markdownRenderer = goldmark.New(
+	goldmark.WithExtensions(
+		extension.Table,
+	),
 	goldmark.WithRendererOptions(
 		html.WithUnsafe(),
 		renderer.WithNodeRenderers(
