@@ -54,7 +54,7 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Send initial handshake and current slide index
 	fmt.Fprintf(w, ": ok\n\n")
 	if b.initialIndex != nil {
-		fmt.Fprintf(w, "data: %d\n\n", b.initialIndex())
+		fmt.Fprintf(w, "data: {\"slide\":%d}\n\n", b.initialIndex())
 	}
 	flusher.Flush()
 
@@ -69,7 +69,7 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if !open {
 				return
 			}
-			fmt.Fprintf(w, "data: %d\n\n", idx)
+			fmt.Fprintf(w, "data: {\"slide\":%d}\n\n", idx)
 			flusher.Flush()
 		}
 	}
