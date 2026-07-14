@@ -85,8 +85,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Bind Keyboard Navigation
   window.addEventListener('keydown', (e) => {
-    // Ignore keypresses if the focus is on input fields or textarea
-    if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+    // Ignore keypresses if the focus is on input fields, textareas, buttons, or contenteditable elements
+    if (document.activeElement.tagName === 'INPUT' || 
+        document.activeElement.tagName === 'TEXTAREA' || 
+        document.activeElement.tagName === 'BUTTON' ||
+        document.activeElement.isContentEditable) {
       return;
     }
 
