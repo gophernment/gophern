@@ -1,0 +1,181 @@
+package parser
+
+import (
+	"os"
+	"strings"
+
+	"gopkg.in/yaml.v3"
+)
+
+// Presentation represents the parsed presentation document.
+type Presentation struct {
+	Title       string `yaml:"title"`
+	Author      string `yaml:"author"`
+	Theme       string `yaml:"theme"`
+	AspectRatio string `yaml:"aspectRatio"`
+	Slides      []Slide
+}
+
+// Slide represents a single slide in the presentation.
+type Slide struct {
+	Index        int
+	RawMarkdown  string
+	HTMLContent  string
+	Layout       string `yaml:"layout"`
+	Background   string `yaml:"background"`
+	Color        string `yaml:"color"`
+	SpeakerNotes string
+}
+
+// ParseMarkdownFile parses a Markdown file into a Presentation struct.
+func ParseMarkdownFile(path string) (*Presentation, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	content := string(data)
+	blocks := splitBySeparator(content)
+
+	pres := &Presentation{
+		Title:       "Presentation",
+		AspectRatio: "16:9",
+		Theme:       "default",
+	}
+
+	var remainingBlocks []string
+	if len(blocks) > 0 {
+		// Check if first block is empty (meaning the file started with ---)
+		if strings.TrimSpace(blocks[0]) == "" && len(blocks) > 1 {
+			// Parse blocks[1] as global frontmatter
+			var globalConfig Presentation
+			if err := yaml.Unmarshal([]byte(blocks[1]), &globalConfig); err == nil {
+				if globalConfig.Title != "" {
+					pres.Title = globalConfig.Title
+				}
+				if globalConfig.Author != "" {
+					pres.Author = globalConfig.Author
+				}
+				if globalConfig.Theme != "" {
+					pres.Theme = globalConfig.Theme
+				}
+				if globalConfig.AspectRatio != "" {
+					pres.AspectRatio = globalConfig.AspectRatio
+				}
+			}
+			remainingBlocks = blocks[2:]
+		} else {
+			remainingBlocks = blocks
+		}
+	}
+
+	slideIdx := 0
+	for i := 0; i < len(remainingBlocks); {
+		block := remainingBlocks[i]
+		blockTrimmed := strings.TrimSpace(block)
+		if blockTrimmed == "" {
+			i++
+			continue
+		}
+
+		var slide Slide
+		slide.Index = slideIdx
+
+		// Check if the current block is a YAML frontmatter block
+		if _, ok := parseYAMLMap(block); ok && i < len(remainingBlocks)-1 {
+			// Unmarshal frontmatter into slide settings
+			_ = yaml.Unmarshal([]byte(block), &slide)
+			
+			// The next block contains the slide's markdown content
+			contentBlock := remainingBlocks[i+1]
+			notes, cleanContent := extractSpeakerNotes(contentBlock)
+			slide.RawMarkdown = cleanContent
+			slide.SpeakerNotes = notes
+			
+			pres.Slides = append(pres.Slides, slide)
+			slideIdx++
+			i += 2
+		} else {
+			// This block contains only the slide's markdown content (no frontmatter)
+			notes, cleanContent := extractSpeakerNotes(block)
+			slide.RawMarkdown = cleanContent
+			slide.SpeakerNotes = notes
+			
+			pres.Slides = append(pres.Slides, slide)
+			slideIdx++
+			i++
+		}
+	}
+
+	return pres, nil
+}
+
+// splitBySeparator splits the markdown content by lines that are exactly "---".
+func splitBySeparator(content string) []string {
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+	lines := strings.Split(content, "\n")
+
+	var blocks []string
+	var currentBlock []string
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "---" {
+			blocks = append(blocks, strings.Join(currentBlock, "\n"))
+			currentBlock = []string{}
+		} else {
+			currentBlock = append(currentBlock, line)
+		}
+	}
+	blocks = append(blocks, strings.Join(currentBlock, "\n"))
+	return blocks
+}
+
+// parseYAMLMap checks if a block is a valid non-empty YAML map.
+func parseYAMLMap(block string) (map[string]interface{}, bool) {
+	block = strings.TrimSpace(block)
+	if block == "" {
+		return nil, false
+	}
+
+	// Avoid false positives: a YAML block should not start with markdown tags
+	lines := strings.Split(block, "\n")
+	for _, l := range lines {
+		l = strings.TrimSpace(l)
+		if l == "" {
+			continue
+		}
+		if strings.HasPrefix(l, "#") || strings.HasPrefix(l, "- ") || strings.HasPrefix(l, "* ") || strings.HasPrefix(l, "> ") {
+			return nil, false
+		}
+		break
+	}
+
+	var m map[string]interface{}
+	err := yaml.Unmarshal([]byte(block), &m)
+	if err != nil {
+		return nil, false
+	}
+	if len(m) == 0 {
+		return nil, false
+	}
+	return m, true
+}
+
+// extractSpeakerNotes searches for HTML comment blocks (<!-- ... -->) at the bottom of the slide markdown
+// and returns the extracted speaker notes and the clean markdown.
+func extractSpeakerNotes(markdown string) (string, string) {
+	startIdx := strings.LastIndex(markdown, "<!--")
+	if startIdx == -1 {
+		return "", strings.TrimSpace(markdown)
+	}
+	endIdx := strings.Index(markdown[startIdx:], "-->")
+	if endIdx == -1 {
+		return "", strings.TrimSpace(markdown)
+	}
+	endIdx += startIdx
+
+	notes := markdown[startIdx+4 : endIdx]
+	cleanMarkdown := markdown[:startIdx] + markdown[endIdx+3:]
+	return strings.TrimSpace(notes), strings.TrimSpace(cleanMarkdown)
+}
