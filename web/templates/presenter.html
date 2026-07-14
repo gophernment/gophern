@@ -244,7 +244,7 @@
         }
     </style>
 </head>
-<body hx-ext="sse" sse-connect="/events">
+<body>
     <!-- Presenter Header -->
     <header class="presenter-header">
         <div class="presentation-title">{{ .Title }}</div>
@@ -292,10 +292,9 @@
                 </div>
             </div>
 
-            <!-- Presenter Navigation Controls -->
             <div class="presenter-controls">
-                <button id="btn-prev" class="control-btn" aria-label="Previous Slide" hx-post="/api/slide/prev" hx-swap="none">← Prev</button>
-                <button id="btn-next" class="control-btn" aria-label="Next Slide" hx-post="/api/slide/next" hx-swap="none">Next →</button>
+                <button id="btn-prev" class="control-btn" aria-label="Previous Slide">← Prev</button>
+                <button id="btn-next" class="control-btn" aria-label="Next Slide">Next →</button>
             </div>
         </div>
     </div>
@@ -413,22 +412,36 @@
                 }
             });
 
-            // Listen to the HTMX dispatched SSE event
-            document.body.addEventListener('htmx:sseMessage', (event) => {
-                try {
-                    const data = JSON.parse(event.detail.data);
-                    if (data.reload) {
-                        window.location.reload();
-                        return;
-                    }
-                    const idx = data.slide;
-                    if (!isNaN(idx)) {
-                        updatePresenterUI(idx);
-                    }
-                } catch (err) {
-                    console.error("Failed to parse SSE JSON payload:", err);
-                }
+            // Button clicks
+            document.getElementById('btn-prev').addEventListener('click', () => {
+                sendSlideChange(currentIndex - 1);
             });
+            document.getElementById('btn-next').addEventListener('click', () => {
+                sendSlideChange(currentIndex + 1);
+            });
+
+            // Connect to Server-Sent Events
+            if (window.location.protocol.startsWith('http')) {
+                const eventSource = new EventSource('/events');
+                eventSource.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.reload) {
+                            window.location.reload();
+                            return;
+                        }
+                        const idx = data.slide;
+                        if (!isNaN(idx)) {
+                            updatePresenterUI(idx);
+                        }
+                    } catch (err) {
+                        console.error("Failed to parse SSE JSON payload:", err);
+                    }
+                };
+                eventSource.onerror = (err) => {
+                    console.error("SSE connection dropped, retrying...", err);
+                };
+            }
 
             // Elapsed Timer Logic
             let startTime = Date.now();
