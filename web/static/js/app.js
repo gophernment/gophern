@@ -133,31 +133,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let isHandlingSSE = false;
 
-  // Connect to Server-Sent Events stream
-  const eventSource = new EventSource('/events');
-  eventSource.onmessage = (event) => {
-    const idx = parseInt(event.data, 10);
-    if (!isNaN(idx) && idx !== currentIndex) {
-      isHandlingSSE = true;
-      goToSlide(idx);
-      isHandlingSSE = false;
-    }
-  };
-  eventSource.onerror = (err) => {
-    console.error("SSE connection dropped, retrying...", err);
-  };
+  if (window.location.protocol.startsWith('http')) {
+    // Connect to Server-Sent Events stream
+    const eventSource = new EventSource('/events');
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const idx = data.slide;
+        if (!isNaN(idx) && idx !== currentIndex) {
+          isHandlingSSE = true;
+          goToSlide(idx);
+          isHandlingSSE = false;
+        }
+      } catch (err) {
+        console.error("Failed to parse SSE JSON payload:", err);
+      }
+    };
+    eventSource.onerror = (err) => {
+      console.error("SSE connection dropped, retrying...", err);
+    };
 
-  // Listen to slidechange event to synchronize other clients
-  document.addEventListener('slidechange', (e) => {
-    if (!isHandlingSSE) {
-      const idx = e.detail.index;
-      fetch('/api/slide', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ index: idx })
-      }).catch(err => console.error('Failed to broadcast slide change:', err));
-    }
-  });
+    // Listen to slidechange event to synchronize other clients
+    document.addEventListener('slidechange', (e) => {
+      if (!isHandlingSSE) {
+        const idx = e.detail.index;
+        fetch('/api/slide', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ index: idx })
+        }).catch(err => console.error('Failed to broadcast slide change:', err));
+      }
+    });
+  }
 
   // Expose slide control functions globally for external integrations (such as Server-Sent Events controllers)
   window.goToSlide = goToSlide;

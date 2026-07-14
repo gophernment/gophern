@@ -7,11 +7,16 @@ import (
 	"io"
 	"os"
 
+	"github.com/gophernment/gophern/internal/exporter"
 	"github.com/gophernment/gophern/internal/server"
 )
 
 var startServer = func(markdownFile, port string, stdout io.Writer) error {
 	return server.Start(markdownFile, port, stdout)
+}
+
+var startExport = func(markdownFile, outputFile string, stdout io.Writer) error {
+	return exporter.Export(markdownFile, outputFile)
 }
 
 
@@ -70,7 +75,9 @@ func run(args []string, stdout, stderr io.Writer) error {
 		}
 		markdownFile := exportCmd.Arg(0)
 		fmt.Fprintf(stdout, "Exporting %s to %s...\n", markdownFile, *output)
-		// Handled in later tasks
+		if err := startExport(markdownFile, *output, stdout); err != nil {
+			return err
+		}
 		return nil
 
 	default:

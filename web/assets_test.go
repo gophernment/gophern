@@ -11,6 +11,7 @@ func TestAssetsExist(t *testing.T) {
 	files := []string{
 		"templates/presentation.html",
 		"templates/presenter.html",
+		"templates/export.html",
 		"static/css/styles.css",
 		"static/js/app.js",
 	}
@@ -26,19 +27,22 @@ func TestAssetsExist(t *testing.T) {
 }
 
 func TestTemplateCompiles(t *testing.T) {
-	htmlData, err := web.Assets.ReadFile("templates/presentation.html")
-	if err != nil {
-		t.Fatalf("failed to read presentation template: %v", err)
-	}
+	templates := []string{"templates/presentation.html", "templates/export.html"}
+	for _, path := range templates {
+		htmlData, err := web.Assets.ReadFile(path)
+		if err != nil {
+			t.Fatalf("failed to read template %s: %v", path, err)
+		}
 
-	tmpl, err := template.New("presentation").Funcs(template.FuncMap{
-		"safe": func(s string) template.HTML { return template.HTML(s) },
-	}).Parse(string(htmlData))
-	if err != nil {
-		t.Fatalf("failed to parse template: %v", err)
-	}
+		tmpl, err := template.New(path).Funcs(template.FuncMap{
+			"safe": func(s string) template.HTML { return template.HTML(s) },
+		}).Parse(string(htmlData))
+		if err != nil {
+			t.Fatalf("failed to parse template %s: %v", path, err)
+		}
 
-	if tmpl == nil {
-		t.Fatal("expected non-nil template")
+		if tmpl == nil {
+			t.Fatal("expected non-nil template")
+		}
 	}
 }

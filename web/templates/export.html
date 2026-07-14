@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .Title }}</title>
+    <!-- Embed presentation stylesheet inline -->
+    <style>
+        {{ .CSS }}
+    </style>
+</head>
+<body>
+    <div id="slide-container">
+        {{ range .Slides }}
+        <div id="slide-{{ .Index }}" class="slide {{ if .Layout }}{{ .Layout }}{{ else }}default{{ end }}" 
+             style="{{ if .Background }}background: {{ .Background }};{{ end }} {{ if .Color }}color: {{ .Color }};{{ end }}">
+            <!-- Render slide content as unescaped raw HTML -->
+            {{ .HTMLContent | safe }}
+        </div>
+        {{ end }}
+
+        <!-- Progress and indicator metrics -->
+        <div id="progress-container" class="progress-bar-container">
+            <div id="progress-bar" class="progress-bar"></div>
+        </div>
+        <div id="slide-number" class="slide-number"></div>
+    </div>
+
+    <!-- Navigation Overlays -->
+    <div class="nav-buttons">
+        <button id="btn-prev" class="nav-btn" aria-label="Previous Slide">← Prev</button>
+        <button id="btn-next" class="nav-btn" aria-label="Next Slide">Next →</button>
+    </div>
+
+    <!-- Embed presentation javascript inline -->
+    <script>
+        {{ .JS }}
+    </script>
+</body>
+</html>

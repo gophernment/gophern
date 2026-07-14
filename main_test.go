@@ -11,6 +11,9 @@ func init() {
 	startServer = func(markdownFile, port string, stdout io.Writer) error {
 		return nil
 	}
+	startExport = func(markdownFile, outputFile string, stdout io.Writer) error {
+		return nil
+	}
 }
 
 func runCLI(args ...string) (string, error) {

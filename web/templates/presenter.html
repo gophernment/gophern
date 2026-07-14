@@ -6,6 +6,8 @@
     <title>Presenter Console - {{ .Title }}</title>
     <!-- Embed presentation stylesheet to render slides properly in the previews -->
     <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/sse.js"></script>
     
     <style>
         /* Presenter Console Specific Styles */
@@ -242,7 +244,7 @@
         }
     </style>
 </head>
-<body>
+<body hx-ext="sse" sse-connect="/events" sse-swap="message">
     <!-- Presenter Header -->
     <header class="presenter-header">
         <div class="presentation-title">{{ .Title }}</div>
@@ -292,8 +294,8 @@
 
             <!-- Presenter Navigation Controls -->
             <div class="presenter-controls">
-                <button id="btn-prev" class="control-btn" aria-label="Previous Slide">← Prev</button>
-                <button id="btn-next" class="control-btn" aria-label="Next Slide">Next →</button>
+                <button id="btn-prev" class="control-btn" aria-label="Previous Slide" hx-post="/api/slide/prev" hx-swap="none">← Prev</button>
+                <button id="btn-next" class="control-btn" aria-label="Next Slide" hx-post="/api/slide/next" hx-swap="none">Next →</button>
             </div>
         </div>
     </div>
@@ -387,14 +389,6 @@
                 }).catch(err => console.error('Failed to change slide:', err));
             }
 
-            // Button clicks
-            document.getElementById('btn-prev').addEventListener('click', () => {
-                sendSlideChange(currentIndex - 1);
-            });
-            document.getElementById('btn-next').addEventListener('click', () => {
-                sendSlideChange(currentIndex + 1);
-            });
-
             // Keyboard navigation
             window.addEventListener('keydown', (e) => {
                 const activeEl = document.activeElement;
@@ -419,17 +413,18 @@
                 }
             });
 
-            // Connect to Server-Sent Events
-            const eventSource = new EventSource('/events');
-            eventSource.onmessage = (event) => {
-                const idx = parseInt(event.data, 10);
-                if (!isNaN(idx)) {
-                    updatePresenterUI(idx);
+            // Listen to the HTMX dispatched SSE event
+            document.body.addEventListener('htmx:sseMessage', (event) => {
+                try {
+                    const data = JSON.parse(event.detail.data);
+                    const idx = data.slide;
+                    if (!isNaN(idx)) {
+                        updatePresenterUI(idx);
+                    }
+                } catch (err) {
+                    console.error("Failed to parse SSE JSON payload:", err);
                 }
-            };
-            eventSource.onerror = (err) => {
-                console.error("SSE connection dropped, retrying...", err);
-            };
+            });
 
             // Elapsed Timer Logic
             let startTime = Date.now();
