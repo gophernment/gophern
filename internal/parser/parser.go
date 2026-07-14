@@ -1,9 +1,11 @@
 package parser
 
 import (
+	"bytes"
 	"os"
 	"strings"
 
+	"github.com/yuin/goldmark"
 	"gopkg.in/yaml.v3"
 )
 
@@ -43,6 +45,7 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 		Theme:       "default",
 	}
 
+	var slide0Layout, slide0Background, slide0Color string
 	var remainingBlocks []string
 	if len(blocks) > 0 {
 		// Check if first block is empty (meaning the file started with ---)
@@ -63,6 +66,14 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 					pres.AspectRatio = globalConfig.AspectRatio
 				}
 			}
+
+			var slide0Config Slide
+			if err := yaml.Unmarshal([]byte(blocks[1]), &slide0Config); err == nil {
+				slide0Layout = slide0Config.Layout
+				slide0Background = slide0Config.Background
+				slide0Color = slide0Config.Color
+			}
+
 			remainingBlocks = blocks[2:]
 		} else {
 			remainingBlocks = blocks
@@ -80,6 +91,11 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 
 		var slide Slide
 		slide.Index = slideIdx
+		if slideIdx == 0 {
+			slide.Layout = slide0Layout
+			slide.Background = slide0Background
+			slide.Color = slide0Color
+		}
 
 		// Check if the current block is a YAML frontmatter block
 		if _, ok := parseYAMLMap(block); ok && i < len(remainingBlocks)-1 {
@@ -92,8 +108,6 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 			slide.RawMarkdown = cleanContent
 			slide.SpeakerNotes = notes
 			
-			pres.Slides = append(pres.Slides, slide)
-			slideIdx++
 			i += 2
 		} else {
 			// This block contains only the slide's markdown content (no frontmatter)
@@ -101,10 +115,16 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 			slide.RawMarkdown = cleanContent
 			slide.SpeakerNotes = notes
 			
-			pres.Slides = append(pres.Slides, slide)
-			slideIdx++
 			i++
 		}
+
+		var htmlBuf bytes.Buffer
+		if err := goldmark.Convert([]byte(slide.RawMarkdown), &htmlBuf); err == nil {
+			slide.HTMLContent = htmlBuf.String()
+		}
+
+		pres.Slides = append(pres.Slides, slide)
+		slideIdx++
 	}
 
 	return pres, nil
@@ -117,10 +137,15 @@ func splitBySeparator(content string) []string {
 
 	var blocks []string
 	var currentBlock []string
+	inCodeBlock := false
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		if trimmed == "---" {
+		if strings.HasPrefix(trimmed, "```") {
+			inCodeBlock = !inCodeBlock
+		}
+
+		if trimmed == "---" && !inCodeBlock {
 			blocks = append(blocks, strings.Join(currentBlock, "\n"))
 			currentBlock = []string{}
 		} else {
@@ -138,17 +163,34 @@ func parseYAMLMap(block string) (map[string]interface{}, bool) {
 		return nil, false
 	}
 
-	// Avoid false positives: a YAML block should not start with markdown tags
 	lines := strings.Split(block, "\n")
-	for _, l := range lines {
-		l = strings.TrimSpace(l)
-		if l == "" {
+	hasNonEmptyLine := false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
 			continue
 		}
-		if strings.HasPrefix(l, "#") || strings.HasPrefix(l, "- ") || strings.HasPrefix(l, "* ") || strings.HasPrefix(l, "> ") {
+		hasNonEmptyLine = true
+
+		idx := strings.Index(trimmed, ":")
+		if idx == -1 {
 			return nil, false
 		}
-		break
+
+		key := strings.TrimSpace(trimmed[:idx])
+		if key == "" {
+			return nil, false
+		}
+
+		for _, r := range key {
+			if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_') {
+				return nil, false
+			}
+		}
+	}
+
+	if !hasNonEmptyLine {
+		return nil, false
 	}
 
 	var m map[string]interface{}
