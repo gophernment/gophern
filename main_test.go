@@ -2,18 +2,14 @@ package main
 
 import (
 	"bytes"
-	"os/exec"
 	"strings"
 	"testing"
 )
 
 func runCLI(args ...string) (string, error) {
-	cmdArgs := append([]string{"run", "main.go"}, args...)
-	cmd := exec.Command("go", cmdArgs...)
+	fullArgs := append([]string{"gophern"}, args...)
 	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
+	err := run(fullArgs, &stdout, &stderr)
 	output := stdout.String() + stderr.String()
 	return output, err
 }
