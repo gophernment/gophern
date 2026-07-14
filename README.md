@@ -17,12 +17,24 @@
 
 ## Installation
 
-Ensure you have [Go](https://go.dev/) (version 1.22 or higher) installed. Clone the repository and build the binary:
+Ensure you have [Go](https://go.dev/) (version 1.22 or higher) installed. 
+
+### Install Remotely
+You can install Gophern directly using Go's package manager:
+
+```bash
+go install github.com/gophernment/gophern@latest
+```
+
+Ensure your Go bin directory (`$GOPATH/bin` or `~/go/bin`) is added to your system's `PATH`.
+
+### Install Locally
+Alternatively, clone the repository and install it locally:
 
 ```bash
 git clone https://github.com/gophernment/gophern.git
 cd gophern
-go build -o gophern main.go
+go install .
 ```
 
 ---
@@ -35,7 +47,7 @@ Gophern provides two main subcommands: `serve` and `export`.
 Start the local HTTP server to display slides and enable presenter synchronization:
 
 ```bash
-./gophern serve [-port 8080] example.md
+gophern serve [-port 8080] example.md
 ```
 
 - Open the **Presentation View** at `http://localhost:8080/`.
@@ -47,7 +59,7 @@ Navigating slides on either window (using arrow keys, space, or buttons) will au
 Export the presentation into a single self-contained HTML file for distribution or offline use:
 
 ```bash
-./gophern export [-o output.html] example.md
+gophern export [-o output.html] example.md
 ```
 
 The output file has all layout CSS and navigation JS bundled inline. Double-click it to run it directly from your file system (`file://` protocol) without needing a server.
