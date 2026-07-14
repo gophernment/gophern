@@ -50,6 +50,7 @@ body {
   position: relative;
   width: var(--slide-width);
   height: var(--slide-height);
+  flex-shrink: 0;
   overflow: hidden;
   background: var(--slide-bg);
   backdrop-filter: blur(20px);
@@ -79,6 +80,15 @@ body {
   justify-content: flex-start;
   transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.8s ease;
   z-index: 1;
+}
+
+/* Fallback/Base styles for markdown headers in custom layouts */
+.slide h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-top: 0;
+  margin-bottom: 2rem;
+  color: var(--text-primary);
 }
 
 /* Slide Transition States */

@@ -85,15 +85,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Bind Keyboard Navigation
   window.addEventListener('keydown', (e) => {
-    // Ignore keypresses if the focus is on input fields, textareas, or contenteditable elements
-    if (document.activeElement.tagName === 'INPUT' || 
-        document.activeElement.tagName === 'TEXTAREA' || 
-        document.activeElement.isContentEditable) {
+    const activeEl = document.activeElement;
+    if (!activeEl) return;
+
+    // Ignore keypresses if the focus is on input fields, textareas, select dropdowns, or contenteditable elements
+    if (activeEl.tagName === 'INPUT' || 
+        activeEl.tagName === 'TEXTAREA' || 
+        activeEl.tagName === 'SELECT' || 
+        activeEl.isContentEditable) {
       return;
     }
 
     // If a button is focused, only ignore Spacebar to prevent double activation, but allow arrows
-    if (document.activeElement.tagName === 'BUTTON' && e.key === ' ') {
+    if (activeEl.tagName === 'BUTTON' && e.key === ' ') {
       return;
     }
 
