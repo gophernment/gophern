@@ -1,0 +1,338 @@
+/* Modern design system tokens */
+:root {
+  --slide-width: 960px;
+  --slide-height: 540px;
+  --scale: 1;
+
+  /* Color Palette - Dark Slate & Violet Accents */
+  --bg-main: #0b0f19;
+  --bg-gradient: radial-gradient(circle at 50% 50%, #151c2e 0%, #080c14 100%);
+  --slide-bg: rgba(13, 20, 35, 0.75);
+  --border-slide: rgba(255, 255, 255, 0.08);
+  --shadow-slide: 0 30px 60px -15px rgba(0, 0, 0, 0.8), 0 0 50px rgba(59, 130, 246, 0.15);
+  
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --accent-primary: #3b82f6;
+  --accent-secondary: #8b5cf6;
+  --accent-glow: linear-gradient(135deg, #60a5fa, #3b82f6, #8b5cf6);
+
+  /* Fonts */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'Fira Code', Consolas, Monaco, 'Courier New', monospace;
+}
+
+/* Global Reset & Base */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-main);
+  background-image: var(--bg-gradient);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Slide Container (Viewport aspect-ratio lock) */
+#slide-container {
+  position: relative;
+  width: var(--slide-width);
+  height: var(--slide-height);
+  overflow: hidden;
+  background: var(--slide-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-slide);
+  border-radius: 16px;
+  box-shadow: var(--shadow-slide);
+  
+  /* Applying scale from JS */
+  transform: scale(var(--scale));
+  transform-origin: center center;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Base Slide Styles */
+.slide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 3.5rem;
+  opacity: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.8s ease;
+  z-index: 1;
+}
+
+/* Slide Transition States */
+.slide.active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate3d(0, 0, 0);
+  z-index: 10;
+}
+
+.slide.past {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(-100%, 0, 0);
+  z-index: 5;
+}
+
+.slide.future {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(100%, 0, 0);
+  z-index: 1;
+}
+
+/* Slide Layout Styles */
+
+/* 1. Cover Slide Layout */
+.slide.cover {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  background: radial-gradient(circle at center, rgba(30, 41, 59, 0.4) 0%, rgba(11, 15, 25, 0.85) 100%);
+  padding: 4rem;
+}
+
+.slide.cover h1 {
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1.15;
+  margin-bottom: 1.5rem;
+  background: var(--accent-glow);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.03em;
+  text-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
+}
+
+.slide.cover h2,
+.slide.cover p {
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  font-weight: 400;
+  margin-top: 0.5rem;
+  max-width: 80%;
+  line-height: 1.5;
+}
+
+/* 2. Default Slide Layout */
+.slide.default {
+  display: flex;
+  flex-direction: column;
+}
+
+.slide.default h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-top: 0;
+  margin-bottom: 2rem;
+  color: var(--text-primary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.75rem;
+  letter-spacing: -0.02em;
+}
+
+/* 3. Two Columns Slide Layout */
+.slide.two-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto 1fr;
+  gap: 2rem;
+  padding: 3.5rem;
+}
+
+.slide.two-cols h1 {
+  grid-column: span 2;
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.75rem;
+}
+
+/* Distribute child elements in columns for two-cols layout */
+.slide.two-cols > *:not(h1) {
+  /* By default let CSS grid place them */
+}
+
+/* Styling common elements inside slides */
+p {
+  font-size: 1.15rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 1.25rem;
+}
+
+ul, ol {
+  font-size: 1.15rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+  padding-left: 2rem;
+}
+
+li {
+  margin-bottom: 0.5rem;
+}
+
+strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+blockquote {
+  border-left: 4px solid var(--accent-primary);
+  background: rgba(59, 130, 246, 0.05);
+  padding: 1rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 0 8px 8px 0;
+}
+
+blockquote p {
+  margin-bottom: 0;
+  font-style: italic;
+  color: var(--text-primary);
+}
+
+/* Code block and syntax highlighting */
+pre {
+  background: rgba(15, 23, 42, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 1.25rem;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 1.5rem 0;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+code {
+  font-family: var(--font-mono);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+/* Navigation Buttons overlay styling */
+.nav-buttons {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  gap: 12px;
+  z-index: 100;
+}
+
+.nav-btn {
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-slide);
+  color: var(--text-secondary);
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: rgba(59, 130, 246, 0.5);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+}
+
+.nav-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Progress bar indicators */
+.progress-bar-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  z-index: 100;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--accent-glow);
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+}
+
+.slide-number {
+  position: absolute;
+  bottom: 24px;
+  left: 32px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  z-index: 100;
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+/* Custom Scrollbar for Pre tags */
+pre::-webkit-scrollbar {
+  height: 8px;
+}
+pre::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+pre::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+pre::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
