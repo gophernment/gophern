@@ -50,31 +50,35 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 	if len(blocks) > 0 {
 		// Check if first block is empty (meaning the file started with ---)
 		if strings.TrimSpace(blocks[0]) == "" && len(blocks) > 1 {
-			// Parse blocks[1] as global frontmatter
-			var globalConfig Presentation
-			if err := yaml.Unmarshal([]byte(blocks[1]), &globalConfig); err == nil {
-				if globalConfig.Title != "" {
-					pres.Title = globalConfig.Title
+			if _, ok := parseYAMLMap(blocks[1]); ok {
+				// Parse blocks[1] as global frontmatter
+				var globalConfig Presentation
+				if err := yaml.Unmarshal([]byte(blocks[1]), &globalConfig); err == nil {
+					if globalConfig.Title != "" {
+						pres.Title = globalConfig.Title
+					}
+					if globalConfig.Author != "" {
+						pres.Author = globalConfig.Author
+					}
+					if globalConfig.Theme != "" {
+						pres.Theme = globalConfig.Theme
+					}
+					if globalConfig.AspectRatio != "" {
+						pres.AspectRatio = globalConfig.AspectRatio
+					}
 				}
-				if globalConfig.Author != "" {
-					pres.Author = globalConfig.Author
-				}
-				if globalConfig.Theme != "" {
-					pres.Theme = globalConfig.Theme
-				}
-				if globalConfig.AspectRatio != "" {
-					pres.AspectRatio = globalConfig.AspectRatio
-				}
-			}
 
-			var slide0Config Slide
-			if err := yaml.Unmarshal([]byte(blocks[1]), &slide0Config); err == nil {
-				slide0Layout = slide0Config.Layout
-				slide0Background = slide0Config.Background
-				slide0Color = slide0Config.Color
-			}
+				var slide0Config Slide
+				if err := yaml.Unmarshal([]byte(blocks[1]), &slide0Config); err == nil {
+					slide0Layout = slide0Config.Layout
+					slide0Background = slide0Config.Background
+					slide0Color = slide0Config.Color
+				}
 
-			remainingBlocks = blocks[2:]
+				remainingBlocks = blocks[2:]
+			} else {
+				remainingBlocks = blocks[1:]
+			}
 		} else {
 			remainingBlocks = blocks
 		}
@@ -240,6 +244,12 @@ func extractSpeakerNotes(markdown string) (string, string) {
 		return "", strings.TrimSpace(markdown)
 	}
 	endIdx += startIdx
+
+	// Ensure that only whitespace or newlines are present after the closing --> tag
+	afterComment := markdown[endIdx+3:]
+	if strings.TrimSpace(afterComment) != "" {
+		return "", strings.TrimSpace(markdown)
+	}
 
 	notes := markdown[startIdx+4 : endIdx]
 	cleanMarkdown := markdown[:startIdx] + markdown[endIdx+3:]

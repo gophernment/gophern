@@ -404,4 +404,88 @@ func hello() {
 			t.Errorf("Expected slide 0 RawMarkdown to contain the tilde fenced code block with '---', got %q", s0.RawMarkdown)
 		}
 	})
+
+	// 5. A markdown file starting with --- but containing no global frontmatter
+	// correctly parses Slide 0 without losing it.
+	t.Run("starts with --- but no global frontmatter", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-no-global-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `---
+# Slide 0 Content
+This has no global frontmatter, but starts with ---
+---
+# Slide 1 Content
+`
+		if _, err := tmpFile.Write([]byte(content)); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+
+		if len(pres.Slides) != 2 {
+			t.Fatalf("Expected 2 slides, got %d", len(pres.Slides))
+		}
+
+		s0 := pres.Slides[0]
+		expectedS0Content := "# Slide 0 Content\nThis has no global frontmatter, but starts with ---"
+		if s0.RawMarkdown != expectedS0Content {
+			t.Errorf("Expected s0 RawMarkdown %q, got %q", expectedS0Content, s0.RawMarkdown)
+		}
+
+		s1 := pres.Slides[1]
+		expectedS1Content := "# Slide 1 Content"
+		if s1.RawMarkdown != expectedS1Content {
+			t.Errorf("Expected s1 RawMarkdown %q, got %q", expectedS1Content, s1.RawMarkdown)
+		}
+
+		// Title should be default since there was no global frontmatter
+		if pres.Title != "Presentation" {
+			t.Errorf("Expected Title 'Presentation', got %q", pres.Title)
+		}
+	})
+
+	// 6. An HTML comment placed inside a fenced code block is not extracted as speaker notes
+	// and remains in the code block.
+	t.Run("HTML comment inside fenced code block not extracted", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-comment-code-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `# Slide with Code Block
+` + "```html\n" + `
+<!-- comment inside code block -->
+` + "```\n"
+		if _, err := tmpFile.Write([]byte(content)); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+
+		if len(pres.Slides) != 1 {
+			t.Fatalf("Expected 1 slide, got %d", len(pres.Slides))
+		}
+
+		s0 := pres.Slides[0]
+		if s0.SpeakerNotes != "" {
+			t.Errorf("Expected no speaker notes, got %q", s0.SpeakerNotes)
+		}
+
+		if !strings.Contains(s0.RawMarkdown, "<!-- comment inside code block -->") {
+			t.Errorf("Expected RawMarkdown to contain '<!-- comment inside code block -->', got %q", s0.RawMarkdown)
+		}
+	})
 }
