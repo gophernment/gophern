@@ -83,11 +83,6 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 	slideIdx := 0
 	for i := 0; i < len(remainingBlocks); {
 		block := remainingBlocks[i]
-		blockTrimmed := strings.TrimSpace(block)
-		if blockTrimmed == "" {
-			i++
-			continue
-		}
 
 		var slide Slide
 		slide.Index = slideIdx
@@ -98,23 +93,25 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 		}
 
 		// Check if the current block is a YAML frontmatter block
-		if _, ok := parseYAMLMap(block); ok && i < len(remainingBlocks)-1 {
-			// Unmarshal frontmatter into slide settings
+		if _, ok := parseYAMLMap(block); ok {
+			// Parse block as frontmatter
 			_ = yaml.Unmarshal([]byte(block), &slide)
-			
-			// The next block contains the slide's markdown content
-			contentBlock := remainingBlocks[i+1]
-			notes, cleanContent := extractSpeakerNotes(contentBlock)
-			slide.RawMarkdown = cleanContent
-			slide.SpeakerNotes = notes
-			
-			i += 2
+
+			if i < len(remainingBlocks)-1 {
+				contentBlock := remainingBlocks[i+1]
+				notes, cleanContent := extractSpeakerNotes(contentBlock)
+				slide.RawMarkdown = cleanContent
+				slide.SpeakerNotes = notes
+				i += 2
+			} else {
+				slide.RawMarkdown = ""
+				slide.SpeakerNotes = ""
+				i++
+			}
 		} else {
-			// This block contains only the slide's markdown content (no frontmatter)
 			notes, cleanContent := extractSpeakerNotes(block)
 			slide.RawMarkdown = cleanContent
 			slide.SpeakerNotes = notes
-			
 			i++
 		}
 
@@ -141,7 +138,7 @@ func splitBySeparator(content string) []string {
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "```") {
+		if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
 			inCodeBlock = !inCodeBlock
 		}
 
@@ -163,34 +160,26 @@ func parseYAMLMap(block string) (map[string]interface{}, bool) {
 		return nil, false
 	}
 
+	// Reject if the first non-empty line starts with a markdown header, list, blockquote, etc.
 	lines := strings.Split(block, "\n")
-	hasNonEmptyLine := false
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == "" {
 			continue
 		}
-		hasNonEmptyLine = true
-
-		idx := strings.Index(trimmed, ":")
-		if idx == -1 {
+		if strings.HasPrefix(trimmed, "> ") || strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") || strings.HasPrefix(trimmed, "+ ") {
 			return nil, false
 		}
-
-		key := strings.TrimSpace(trimmed[:idx])
-		if key == "" {
-			return nil, false
-		}
-
-		for _, r := range key {
-			if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_') {
+		if strings.HasPrefix(trimmed, "#") {
+			i := 0
+			for i < len(trimmed) && trimmed[i] == '#' {
+				i++
+			}
+			if i < len(trimmed) && trimmed[i] == ' ' {
 				return nil, false
 			}
 		}
-	}
-
-	if !hasNonEmptyLine {
-		return nil, false
+		break // Only check the first non-empty line
 	}
 
 	var m map[string]interface{}
@@ -201,6 +190,41 @@ func parseYAMLMap(block string) (map[string]interface{}, bool) {
 	if len(m) == 0 {
 		return nil, false
 	}
+
+	var validate func(interface{}) bool
+	validate = func(val interface{}) bool {
+		switch v := val.(type) {
+		case map[string]interface{}:
+			for k, child := range v {
+				if k == "" {
+					return false
+				}
+				for _, r := range k {
+					if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_') {
+						return false
+					}
+				}
+				if strings.HasPrefix(k, "-") || strings.HasPrefix(k, "*") || strings.HasPrefix(k, "+") || strings.HasPrefix(k, "#") || strings.HasPrefix(k, ">") {
+					return false
+				}
+				if !validate(child) {
+					return false
+				}
+			}
+		case []interface{}:
+			for _, item := range v {
+				if !validate(item) {
+					return false
+				}
+			}
+		}
+		return true
+	}
+
+	if !validate(m) {
+		return nil, false
+	}
+
 	return m, true
 }
 

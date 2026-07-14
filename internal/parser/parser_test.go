@@ -235,3 +235,173 @@ layout: third-layout
 	}
 }
 
+func TestTask2ReviewIssues(t *testing.T) {
+	// 1. A slide frontmatter with comments, multi-line string, and lists parses correctly.
+	t.Run("frontmatter comments, multi-line, lists", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-yaml-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `# Slide 1
+---
+layout: slide-with-yaml-features
+# This is a comment in frontmatter
+comments:
+  - comment 1
+  - comment 2
+notes: |
+  This is a multi-line
+  string
+---
+# Slide 2 Content
+`
+		if _, err := tmpFile.Write([]byte(content)); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+
+		if len(pres.Slides) != 2 {
+			t.Fatalf("Expected 2 slides, got %d", len(pres.Slides))
+		}
+
+		s0 := pres.Slides[0]
+		if s0.RawMarkdown != "# Slide 1" {
+			t.Errorf("Expected s0 RawMarkdown '# Slide 1', got %q", s0.RawMarkdown)
+		}
+
+		s1 := pres.Slides[1]
+		if s1.Layout != "slide-with-yaml-features" {
+			t.Errorf("Expected s1 Layout 'slide-with-yaml-features', got %q", s1.Layout)
+		}
+		if s1.RawMarkdown != "# Slide 2 Content" {
+			t.Errorf("Expected s1 RawMarkdown '# Slide 2 Content', got %q", s1.RawMarkdown)
+		}
+	})
+
+	// 2. A document ending with a frontmatter-only slide (no content and no trailing separator)
+	// correctly creates the last slide with that frontmatter and empty content.
+	t.Run("ending with frontmatter-only slide", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-end-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `# Slide 1 Content
+---
+layout: end-slide
+background: black`
+		if _, err := tmpFile.Write([]byte(content)); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+
+		if len(pres.Slides) != 2 {
+			t.Fatalf("Expected 2 slides, got %d", len(pres.Slides))
+		}
+
+		s0 := pres.Slides[0]
+		if s0.RawMarkdown != "# Slide 1 Content" {
+			t.Errorf("Expected s0 RawMarkdown '# Slide 1 Content', got %q", s0.RawMarkdown)
+		}
+
+		s1 := pres.Slides[1]
+		if s1.Layout != "end-slide" {
+			t.Errorf("Expected s1 Layout 'end-slide', got %q", s1.Layout)
+		}
+		if s1.Background != "black" {
+			t.Errorf("Expected s1 Background 'black', got %q", s1.Background)
+		}
+		if s1.RawMarkdown != "" {
+			t.Errorf("Expected s1 RawMarkdown to be empty, got %q", s1.RawMarkdown)
+		}
+	})
+
+	// 3. Empty/blank slides are not skipped and are indexed correctly.
+	t.Run("empty blank slides indexed correctly", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-empty-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `# Slide 1
+---
+---
+# Slide 3`
+		if _, err := tmpFile.Write([]byte(content)); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+
+		if len(pres.Slides) != 3 {
+			t.Fatalf("Expected 3 slides, got %d", len(pres.Slides))
+		}
+
+		s0 := pres.Slides[0]
+		if s0.Index != 0 || s0.RawMarkdown != "# Slide 1" {
+			t.Errorf("Expected slide 0 with content '# Slide 1', got index=%d, content=%q", s0.Index, s0.RawMarkdown)
+		}
+
+		s1 := pres.Slides[1]
+		if s1.Index != 1 || s1.RawMarkdown != "" {
+			t.Errorf("Expected slide 1 to be blank, got index=%d, content=%q", s1.Index, s1.RawMarkdown)
+		}
+
+		s2 := pres.Slides[2]
+		if s2.Index != 2 || s2.RawMarkdown != "# Slide 3" {
+			t.Errorf("Expected slide 2 with content '# Slide 3', got index=%d, content=%q", s2.Index, s2.RawMarkdown)
+		}
+	})
+
+	// 4. Fenced code blocks starting with ~~~ containing --- are not split.
+	t.Run("tilde fenced code block does not split", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-tilde-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `# Slide with tildes
+~~~go
+func hello() {
+    // ---
+}
+~~~`
+		if _, err := tmpFile.Write([]byte(content)); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+
+		if len(pres.Slides) != 1 {
+			t.Fatalf("Expected 1 slide, got %d", len(pres.Slides))
+		}
+
+		s0 := pres.Slides[0]
+		if !strings.Contains(s0.RawMarkdown, "~~~go") || !strings.Contains(s0.RawMarkdown, "---") || !strings.Contains(s0.RawMarkdown, "~~~") {
+			t.Errorf("Expected slide 0 RawMarkdown to contain the tilde fenced code block with '---', got %q", s0.RawMarkdown)
+		}
+	})
+}
