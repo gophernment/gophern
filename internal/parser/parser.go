@@ -320,6 +320,10 @@ func RenderMarkdownToHTML(markdownInput string) (string, error) {
 	return buf.String(), nil
 }
 
+var chromaFormatter = chromahtml.New(
+	chromahtml.WithClasses(false),
+)
+
 type ChromaRenderer struct{}
 
 func (r *ChromaRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
@@ -371,20 +375,16 @@ func (r *ChromaRenderer) highlight(w util.BufWriter, code string, lang string) (
 		style = styles.Fallback
 	}
 
-	formatter := chromahtml.New(
-		chromahtml.WithClasses(false),
-	)
-
 	iterator, err := lexer.Tokenise(nil, code)
 	if err != nil {
 		return ast.WalkStop, err
 	}
 
-	err = formatter.Format(w, style, iterator)
+	err = chromaFormatter.Format(w, style, iterator)
 	if err != nil {
 		return ast.WalkStop, err
 	}
 
-	return ast.WalkContinue, nil
+	return ast.WalkSkipChildren, nil
 }
 
