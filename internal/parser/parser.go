@@ -302,18 +302,19 @@ func extractSpeakerNotes(markdown string) (string, string) {
 	return strings.TrimSpace(notes), strings.TrimSpace(cleanMarkdown)
 }
 
+var markdownRenderer = goldmark.New(
+	goldmark.WithRendererOptions(
+		html.WithUnsafe(),
+		renderer.WithNodeRenderers(
+			util.Prioritized(&ChromaRenderer{}, 100),
+		),
+	),
+)
+
 // RenderMarkdownToHTML renders markdown content into HTML with code syntax highlighting.
 func RenderMarkdownToHTML(markdownInput string) (string, error) {
-	md := goldmark.New(
-		goldmark.WithRendererOptions(
-			html.WithUnsafe(),
-			renderer.WithNodeRenderers(
-				util.Prioritized(&ChromaRenderer{}, 100),
-			),
-		),
-	)
 	var buf bytes.Buffer
-	if err := md.Convert([]byte(markdownInput), &buf); err != nil {
+	if err := markdownRenderer.Convert([]byte(markdownInput), &buf); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
