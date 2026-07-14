@@ -1,8 +1,11 @@
 module github.com/gophernment/gophern
 
-go 1.22
+go 1.25
 
 require (
-	github.com/yuin/goldmark v1.7.4
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	github.com/alecthomas/chroma/v2 v2.27.0
+	github.com/yuin/goldmark v1.8.4
+	gopkg.in/yaml.v3 v3.0.1
 )
+
+require github.com/dlclark/regexp2/v2 v2.2.1 // indirect

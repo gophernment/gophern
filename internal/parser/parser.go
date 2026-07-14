@@ -5,8 +5,14 @@ import (
 	"os"
 	"strings"
 
+	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
+	"github.com/alecthomas/chroma/v2/lexers"
+	"github.com/alecthomas/chroma/v2/styles"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/renderer/html"
+	"github.com/yuin/goldmark/util"
 	"gopkg.in/yaml.v3"
 )
 
@@ -85,11 +91,6 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 		}
 	}
 
-	md := goldmark.New(
-		goldmark.WithRendererOptions(
-			html.WithUnsafe(),
-		),
-	)
 
 	slideIdx := 0
 	for i := 0; i < len(remainingBlocks); {
@@ -126,10 +127,11 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 			i++
 		}
 
-		var htmlBuf bytes.Buffer
-		if err := md.Convert([]byte(slide.RawMarkdown), &htmlBuf); err == nil {
-			slide.HTMLContent = htmlBuf.String()
+		htmlContent, err := RenderMarkdownToHTML(slide.RawMarkdown)
+		if err != nil {
+			return nil, err
 		}
+		slide.HTMLContent = htmlContent
 
 		pres.Slides = append(pres.Slides, slide)
 		slideIdx++
@@ -299,3 +301,89 @@ func extractSpeakerNotes(markdown string) (string, string) {
 	cleanMarkdown := markdown[:startIdx] + markdown[endIdx+3:]
 	return strings.TrimSpace(notes), strings.TrimSpace(cleanMarkdown)
 }
+
+// RenderMarkdownToHTML renders markdown content into HTML with code syntax highlighting.
+func RenderMarkdownToHTML(markdownInput string) (string, error) {
+	md := goldmark.New(
+		goldmark.WithRendererOptions(
+			html.WithUnsafe(),
+			renderer.WithNodeRenderers(
+				util.Prioritized(&ChromaRenderer{}, 100),
+			),
+		),
+	)
+	var buf bytes.Buffer
+	if err := md.Convert([]byte(markdownInput), &buf); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+type ChromaRenderer struct{}
+
+func (r *ChromaRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
+	reg.Register(ast.KindFencedCodeBlock, r.renderFencedCodeBlock)
+	reg.Register(ast.KindCodeBlock, r.renderCodeBlock)
+}
+
+func (r *ChromaRenderer) renderFencedCodeBlock(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+	if !entering {
+		return ast.WalkContinue, nil
+	}
+	n := node.(*ast.FencedCodeBlock)
+	lang := string(n.Language(source))
+
+	var codeBuf bytes.Buffer
+	l := n.Lines().Len()
+	for i := 0; i < l; i++ {
+		line := n.Lines().At(i)
+		codeBuf.Write(line.Value(source))
+	}
+
+	return r.highlight(w, codeBuf.String(), lang)
+}
+
+func (r *ChromaRenderer) renderCodeBlock(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+	if !entering {
+		return ast.WalkContinue, nil
+	}
+	n := node.(*ast.CodeBlock)
+
+	var codeBuf bytes.Buffer
+	l := n.Lines().Len()
+	for i := 0; i < l; i++ {
+		line := n.Lines().At(i)
+		codeBuf.Write(line.Value(source))
+	}
+
+	return r.highlight(w, codeBuf.String(), "")
+}
+
+func (r *ChromaRenderer) highlight(w util.BufWriter, code string, lang string) (ast.WalkStatus, error) {
+	lexer := lexers.Get(lang)
+	if lexer == nil {
+		lexer = lexers.Fallback
+	}
+
+	style := styles.Get("github")
+	if style == nil {
+		style = styles.Fallback
+	}
+
+	formatter := chromahtml.New(
+		chromahtml.WithClasses(false),
+	)
+
+	iterator, err := lexer.Tokenise(nil, code)
+	if err != nil {
+		return ast.WalkStop, err
+	}
+
+	err = formatter.Format(w, style, iterator)
+	if err != nil {
+		return ast.WalkStop, err
+	}
+
+	return ast.WalkContinue, nil
+}
+
