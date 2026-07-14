@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/renderer/html"
 	"gopkg.in/yaml.v3"
 )
 
@@ -120,7 +121,12 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 		}
 
 		var htmlBuf bytes.Buffer
-		if err := goldmark.Convert([]byte(slide.RawMarkdown), &htmlBuf); err == nil {
+		md := goldmark.New(
+			goldmark.WithRendererOptions(
+				html.WithUnsafe(),
+			),
+		)
+		if err := md.Convert([]byte(slide.RawMarkdown), &htmlBuf); err == nil {
 			slide.HTMLContent = htmlBuf.String()
 		}
 
@@ -157,33 +163,30 @@ func splitBySeparator(content string) []string {
 	return blocks
 }
 
+var coreFrontmatterKeys = map[string]bool{
+	"title":       true,
+	"author":      true,
+	"theme":       true,
+	"aspectRatio": true,
+	"layout":      true,
+	"background":  true,
+	"color":       true,
+	"class":       true,
+	"transition":  true,
+	"disabled":    true,
+	"clicks":      true,
+	"preload":     true,
+	"src":         true,
+	"name":        true,
+	"route":       true,
+	"drawings":    true,
+}
+
 // parseYAMLMap checks if a block is a valid non-empty YAML map.
 func parseYAMLMap(block string) (map[string]interface{}, bool) {
 	block = strings.TrimSpace(block)
 	if block == "" {
 		return nil, false
-	}
-
-	// Reject if the first non-empty line starts with a markdown header, list, blockquote, etc.
-	lines := strings.Split(block, "\n")
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" {
-			continue
-		}
-		if strings.HasPrefix(trimmed, "> ") || strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") || strings.HasPrefix(trimmed, "+ ") {
-			return nil, false
-		}
-		if strings.HasPrefix(trimmed, "#") {
-			i := 0
-			for i < len(trimmed) && trimmed[i] == '#' {
-				i++
-			}
-			if i < len(trimmed) && trimmed[i] == ' ' {
-				return nil, false
-			}
-		}
-		break // Only check the first non-empty line
 	}
 
 	var m map[string]interface{}
@@ -195,6 +198,7 @@ func parseYAMLMap(block string) (map[string]interface{}, bool) {
 		return nil, false
 	}
 
+	// Validate map keys consist of standard YAML identifiers
 	var validate func(interface{}) bool
 	validate = func(val interface{}) bool {
 		switch v := val.(type) {
@@ -207,9 +211,6 @@ func parseYAMLMap(block string) (map[string]interface{}, bool) {
 					if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_') {
 						return false
 					}
-				}
-				if strings.HasPrefix(k, "-") || strings.HasPrefix(k, "*") || strings.HasPrefix(k, "+") || strings.HasPrefix(k, "#") || strings.HasPrefix(k, ">") {
-					return false
 				}
 				if !validate(child) {
 					return false
@@ -227,6 +228,48 @@ func parseYAMLMap(block string) (map[string]interface{}, bool) {
 
 	if !validate(m) {
 		return nil, false
+	}
+
+	// Ensure the YAML map contains at least one core slide or presentation configuration key.
+	// This prevents markdown paragraphs/lists containing colons from being misclassified as frontmatter
+	// while allowing frontmatter blocks to contain YAML comments on any line (including the first).
+	hasCoreKey := false
+	for k := range m {
+		if coreFrontmatterKeys[k] {
+			hasCoreKey = true
+			break
+		}
+	}
+	if !hasCoreKey {
+		return nil, false
+	}
+
+	// Verify every line of the block is YAML structure to avoid false positives with markdown
+	lines := strings.Split(block, "\n")
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		// Must be a comment, or start with spaces/tabs (indented YAML), or be a key-value line
+		if strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t") {
+			continue
+		}
+		// Otherwise, it must be a top-level key-value line
+		colonIdx := strings.Index(trimmed, ":")
+		if colonIdx == -1 || colonIdx == 0 {
+			return nil, false
+		}
+		key := strings.TrimSpace(trimmed[:colonIdx])
+		// Key must be valid YAML key (alphanumeric/hyphen/underscore)
+		for _, r := range key {
+			if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_') {
+				return nil, false
+			}
+		}
 	}
 
 	return m, true

@@ -488,4 +488,69 @@ This has no global frontmatter, but starts with ---
 			t.Errorf("Expected RawMarkdown to contain '<!-- comment inside code block -->', got %q", s0.RawMarkdown)
 		}
 	})
+
+	// 7. A frontmatter block starting with a comment on the first line is correctly parsed
+	t.Run("frontmatter starts with comment", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-comment-first-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `# Slide 1
+---
+# This is a comment on the first line
+layout: center
+background: red
+---
+# Slide 2 Content
+`
+		if _, err := tmpFile.Write([]byte(content)); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+
+		if len(pres.Slides) != 2 {
+			t.Fatalf("Expected 2 slides, got %d", len(pres.Slides))
+		}
+
+		s1 := pres.Slides[1]
+		if s1.Layout != "center" {
+			t.Errorf("Expected s1 Layout 'center', got %q", s1.Layout)
+		}
+		if s1.Background != "red" {
+			t.Errorf("Expected s1 Background 'red', got %q", s1.Background)
+		}
+	})
+
+	// 8. Raw HTML tags are rendered correctly (unsafe HTML enabled in goldmark)
+	t.Run("goldmark unsafe HTML rendering", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-unsafe-html-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `<div class="custom-class">Hello HTML</div>`
+		if _, err := tmpFile.Write([]byte(content)); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+
+		s0 := pres.Slides[0]
+		expectedHTML := `<div class="custom-class">Hello HTML</div>`
+		if !strings.Contains(s0.HTMLContent, expectedHTML) {
+			t.Errorf("Expected HTMLContent to contain %q, got %q", expectedHTML, s0.HTMLContent)
+		}
+	})
 }
