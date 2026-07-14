@@ -10,7 +10,7 @@
 <body>
     <div id="slide-container">
         {{ range .Slides }}
-        <div class="slide {{ if .Layout }}{{ .Layout }}{{ else }}default{{ end }}" 
+        <div id="slide-{{ .Index }}" class="slide {{ if .Layout }}{{ .Layout }}{{ else }}default{{ end }}" 
              style="{{ if .Background }}background: {{ .Background }};{{ end }} {{ if .Color }}color: {{ .Color }};{{ end }}">
             <!-- Render slide content as unescaped raw HTML -->
             {{ .HTMLContent | safe }}
@@ -18,10 +18,10 @@
         {{ end }}
 
         <!-- Progress and indicator metrics -->
-        <div class="progress-bar-container">
-            <div class="progress-bar"></div>
+        <div id="progress-container" class="progress-bar-container">
+            <div id="progress-bar" class="progress-bar"></div>
         </div>
-        <div class="slide-number"></div>
+        <div id="slide-number" class="slide-number"></div>
     </div>
 
     <!-- Navigation Overlays -->
