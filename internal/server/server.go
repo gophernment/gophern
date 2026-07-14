@@ -6,7 +6,9 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"os"
 	"sync"
+	"time"
 
 	"github.com/gophernment/gophern/internal/parser"
 	"github.com/gophernment/gophern/web"
@@ -52,8 +54,29 @@ func (s *Server) Router() http.Handler {
 // Start launches the HTTP server on the specified port.
 func Start(markdownFile, port string, stdout io.Writer) error {
 	s := NewServer(markdownFile)
+	go s.watchFile()
 	fmt.Fprintf(stdout, "Starting server on port %s...\n", port)
 	return http.ListenAndServe(":"+port, s.Router())
+}
+
+func (s *Server) watchFile() {
+	info, err := os.Stat(s.markdownFile)
+	if err != nil {
+		return
+	}
+	lastModTime := info.ModTime()
+
+	for {
+		time.Sleep(500 * time.Millisecond)
+		currentInfo, err := os.Stat(s.markdownFile)
+		if err != nil {
+			continue
+		}
+		if currentInfo.ModTime().After(lastModTime) {
+			lastModTime = currentInfo.ModTime()
+			s.broker.Broadcast("data: {\"reload\":true}\n\n")
+		}
+	}
 }
 
 func (s *Server) handlePresentation(w http.ResponseWriter, r *http.Request) {
@@ -117,7 +140,7 @@ func (s *Server) handleUpdateSlide(w http.ResponseWriter, r *http.Request) {
 	s.currentIndex = payload.Index
 	s.mu.Unlock()
 
-	s.broker.Broadcast(payload.Index)
+	s.broker.Broadcast(fmt.Sprintf("data: {\"slide\":%d}\n\n", payload.Index))
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
@@ -148,7 +171,7 @@ func (s *Server) handleNextSlide(w http.ResponseWriter, r *http.Request) {
 	newIdx := s.currentIndex
 	s.mu.Unlock()
 
-	s.broker.Broadcast(newIdx)
+	s.broker.Broadcast(fmt.Sprintf("data: {\"slide\":%d}\n\n", newIdx))
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
@@ -178,7 +201,7 @@ func (s *Server) handlePrevSlide(w http.ResponseWriter, r *http.Request) {
 	newIdx := s.currentIndex
 	s.mu.Unlock()
 
-	s.broker.Broadcast(newIdx)
+	s.broker.Broadcast(fmt.Sprintf("data: {\"slide\":%d}\n\n", newIdx))
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))

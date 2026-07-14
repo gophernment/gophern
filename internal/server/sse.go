@@ -9,14 +9,14 @@ import (
 // Broker handles multiple SSE clients.
 type Broker struct {
 	mu           sync.Mutex
-	clients      map[chan int]bool
+	clients      map[chan string]bool
 	initialIndex func() int
 }
 
 // NewBroker creates a new Broker instance.
 func NewBroker(initialIndex func() int) *Broker {
 	return &Broker{
-		clients:      make(map[chan int]bool),
+		clients:      make(map[chan string]bool),
 		initialIndex: initialIndex,
 	}
 }
@@ -30,7 +30,7 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	// Create a channel for this client
-	ch := make(chan int, 10)
+	ch := make(chan string, 10)
 
 	// Register client
 	b.mu.Lock()
@@ -65,24 +65,24 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-ctx.Done():
 			return
-		case idx, open := <-ch:
+		case msg, open := <-ch:
 			if !open {
 				return
 			}
-			fmt.Fprintf(w, "data: {\"slide\":%d}\n\n", idx)
+			fmt.Fprintf(w, "%s", msg)
 			flusher.Flush()
 		}
 	}
 }
 
-// Broadcast sends the slide index to all registered clients.
-func (b *Broker) Broadcast(index int) {
+// Broadcast sends the message to all registered clients.
+func (b *Broker) Broadcast(msg string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
 	for ch := range b.clients {
 		select {
-		case ch <- index:
+		case ch <- msg:
 		default:
 			// Discard if client is blocked to prevent hanging
 		}

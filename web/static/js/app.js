@@ -139,6 +139,10 @@ document.addEventListener('DOMContentLoaded', () => {
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        if (data.reload) {
+          window.location.reload();
+          return;
+        }
         const idx = data.slide;
         if (!isNaN(idx) && idx !== currentIndex) {
           isHandlingSSE = true;
