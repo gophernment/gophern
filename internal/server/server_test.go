@@ -97,6 +97,34 @@ Here is details.
 		}
 	})
 
+	// 3a. Test POST /api/slide/prev
+	t.Run("POST /api/slide/prev", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/api/slide/prev", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", rec.Code)
+		}
+		if rec.Body.String() != "OK" {
+			t.Errorf("expected OK, got: %s", rec.Body.String())
+		}
+	})
+
+	// 3b. Test POST /api/slide/next
+	t.Run("POST /api/slide/next", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/api/slide/next", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", rec.Code)
+		}
+		if rec.Body.String() != "OK" {
+			t.Errorf("expected OK, got: %s", rec.Body.String())
+		}
+	})
+
 	// 4. Test GET /static/...
 	t.Run("GET /static/css/styles.css", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/static/css/styles.css", nil)
@@ -166,8 +194,8 @@ func TestSSELiveStream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read initial SSE data: %v", err)
 	}
-	if initialData != "0" {
-		t.Errorf("expected initial slide index 0, got: %s", initialData)
+	if initialData != `{"slide":0}` {
+		t.Errorf("expected initial slide index JSON, got: %s", initialData)
 	}
 
 	// 2. Trigger a slide update via API in a goroutine
@@ -188,7 +216,7 @@ func TestSSELiveStream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read updated SSE data: %v", err)
 	}
-	if updatedData != "2" {
-		t.Errorf("expected updated slide index 2, got: %s", updatedData)
+	if updatedData != `{"slide":2}` {
+		t.Errorf("expected updated slide index JSON, got: %s", updatedData)
 	}
 }

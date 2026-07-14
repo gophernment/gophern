@@ -43,6 +43,8 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("GET /presenter", s.handlePresenter)
 	mux.HandleFunc("GET /events", s.broker.ServeHTTP)
 	mux.HandleFunc("POST /api/slide", s.handleUpdateSlide)
+	mux.HandleFunc("POST /api/slide/next", s.handleNextSlide)
+	mux.HandleFunc("POST /api/slide/prev", s.handlePrevSlide)
 	mux.Handle("GET /static/", http.FileServer(http.FS(web.Assets)))
 	return mux
 }
@@ -116,6 +118,67 @@ func (s *Server) handleUpdateSlide(w http.ResponseWriter, r *http.Request) {
 	s.mu.Unlock()
 
 	s.broker.Broadcast(payload.Index)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
+}
+
+func (s *Server) handleNextSlide(w http.ResponseWriter, r *http.Request) {
+	pres, err := parser.ParseMarkdownFile(s.markdownFile)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error parsing markdown: %v", err), http.StatusInternalServerError)
+		return
+	}
+	totalSlides := len(pres.Slides)
+
+	s.mu.RLock()
+	curr := s.currentIndex
+	s.mu.RUnlock()
+
+	if curr >= totalSlides-1 {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+		return
+	}
+
+	s.mu.Lock()
+	if s.currentIndex < totalSlides-1 {
+		s.currentIndex++
+	}
+	newIdx := s.currentIndex
+	s.mu.Unlock()
+
+	s.broker.Broadcast(newIdx)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
+}
+
+func (s *Server) handlePrevSlide(w http.ResponseWriter, r *http.Request) {
+	_, err := parser.ParseMarkdownFile(s.markdownFile)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error parsing markdown: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	s.mu.RLock()
+	curr := s.currentIndex
+	s.mu.RUnlock()
+
+	if curr <= 0 {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+		return
+	}
+
+	s.mu.Lock()
+	if s.currentIndex > 0 {
+		s.currentIndex--
+	}
+	newIdx := s.currentIndex
+	s.mu.Unlock()
+
+	s.broker.Broadcast(newIdx)
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
