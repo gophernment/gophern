@@ -33,8 +33,24 @@ func NewServer(markdownFile string) *Server {
 	}
 	s.broker = NewBroker(func() int {
 		s.mu.RLock()
-		defer s.mu.RUnlock()
-		return s.currentIndex
+		idx := s.currentIndex
+		s.mu.RUnlock()
+
+		// Clamp to the current slide count in case the markdown file was
+		// edited (e.g. slides removed) since the index was last set, so a
+		// reconnecting client (page refresh, hot-reload) lands on the last
+		// slide that still exists instead of silently resetting to slide 1.
+		pres, err := parser.ParseMarkdownFile(s.markdownFile)
+		if err != nil {
+			return idx
+		}
+		if idx >= len(pres.Slides) {
+			idx = len(pres.Slides) - 1
+		}
+		if idx < 0 {
+			idx = 0
+		}
+		return idx
 	})
 	return s
 }
