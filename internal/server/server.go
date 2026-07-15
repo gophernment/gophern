@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -48,6 +49,8 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("POST /api/slide/next", s.handleNextSlide)
 	mux.HandleFunc("POST /api/slide/prev", s.handlePrevSlide)
 	mux.Handle("GET /static/", http.FileServer(http.FS(web.Assets)))
+	assetDir := filepath.Join(filepath.Dir(s.markdownFile), "asset")
+	mux.Handle("GET /asset/", http.StripPrefix("/asset/", http.FileServer(http.Dir(assetDir))))
 	return mux
 }
 
