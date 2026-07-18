@@ -110,6 +110,88 @@ Explain the two subcommands: serve starts http.ListenAndServe; export bundles al
 -->
 
 ---
+layout: "split-h"
+ratio: "60/40"
+background: "#0f172a"
+color: "#f8fafc"
+---
+
+# Split Layouts: split-h
+
+::left::
+Use `::left::` and `::right::` markers to divide a slide into two
+independently-authored regions. Set `ratio: "60/40"` to control the split.
+
+::right::
+```go
+// Right region can hold its own
+// code block, list, or any markdown.
+func main() {
+    fmt.Println("gophern")
+}
+```
+
+---
+layout: "split-v"
+ratio: "50/50"
+background: "#1e293b"
+color: "#f8fafc"
+---
+
+# Split Layouts: split-v
+
+::top::
+Top region — stacked vertically with `::top::` / `::bottom::`.
+
+::bottom::
+Bottom region. `layout: "split-v"` splits by row instead of by column.
+
+---
+layout: "split-3"
+ratio: "33/34/33"
+background: "#0f172a"
+color: "#f8fafc"
+---
+
+# Split Layouts: split-3
+
+::left::
+Left third.
+
+::center::
+Center third.
+
+::right::
+Right third.
+
+---
+layout: "grid-4"
+cols: "60/40"
+rows: "70/30"
+background: "#1e293b"
+color: "#f8fafc"
+---
+
+# Split Layouts: grid-4
+
+::tl::
+Top-left
+
+::tr::
+Top-right
+
+::bl::
+Bottom-left
+
+::br::
+Bottom-right
+
+<!--
+Demo of all four split-region layouts: split-h, split-v, split-3, and
+grid-4, each with a custom ratio via the ratio/cols/rows frontmatter fields.
+-->
+
+---
 layout: "cover"
 background: "linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)"
 color: "#ffffff"
