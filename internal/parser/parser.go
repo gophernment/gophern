@@ -106,7 +106,6 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 		}
 	}
 
-
 	slideIdx := 0
 	for i := 0; i < len(remainingBlocks); {
 		block := remainingBlocks[i]
@@ -521,4 +520,3 @@ func (r *ChromaRenderer) highlight(w util.BufWriter, code string, lang string) (
 
 	return ast.WalkSkipChildren, nil
 }
-
