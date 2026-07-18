@@ -347,3 +347,46 @@ pre::-webkit-scrollbar-thumb {
 pre::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
 }
+
+/* Split-Region Layouts (split-h, split-v, split-3, grid-4)
+   .slide is already `display: flex; flex-direction: column;` by default
+   (see base .slide rule above), so no extra display rule is needed here. */
+.split-header {
+  flex-shrink: 0;
+  margin-bottom: 1.5rem;
+}
+
+.split-grid {
+  flex: 1;
+  display: grid;
+  gap: 2rem;
+  min-height: 0;
+}
+
+.split-grid .region {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.slide.split-h .split-grid {
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas: "left right";
+}
+
+.slide.split-v .split-grid {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr 1fr;
+  grid-template-areas: "top" "bottom";
+}
+
+.slide.split-3 .split-grid {
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-areas: "left center right";
+}
+
+.slide.grid-4 .split-grid {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  grid-template-areas: "tl tr" "bl br";
+}

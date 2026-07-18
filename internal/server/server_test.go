@@ -226,3 +226,95 @@ func TestSSELiveStream(t *testing.T) {
 		t.Errorf("expected updated slide index JSON, got: %s", updatedData)
 	}
 }
+
+func TestServerSplitLayout(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "test_split_*.md")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	markdownContent := `---
+layout: "split-h"
+ratio: "70/30"
+---
+# Split Slide
+
+::left::
+Left content here.
+
+::right::
+Right content here.
+`
+	if _, err := tmpFile.WriteString(markdownContent); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	srv := server.NewServer(tmpFile.Name())
+	router := srv.Router()
+
+	req := httptest.NewRequest("GET", "/", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rec.Code)
+	}
+	body := rec.Body.String()
+
+	if !strings.Contains(body, `class="split-grid"`) {
+		t.Errorf("expected split-grid container in html, got: %s", body)
+	}
+	if !strings.Contains(body, "grid-area: left") {
+		t.Errorf("expected left region grid-area in html, got: %s", body)
+	}
+	if !strings.Contains(body, "grid-area: right") {
+		t.Errorf("expected right region grid-area in html, got: %s", body)
+	}
+	if !strings.Contains(body, "grid-template-columns: 70fr 30fr") {
+		t.Errorf("expected ratio-derived grid-template-columns in html, got: %s", body)
+	}
+	if !strings.Contains(body, `class="split-header"`) {
+		t.Errorf("expected split-header wrapping the slide heading, got: %s", body)
+	}
+	if !strings.Contains(body, "Left content here") || !strings.Contains(body, "Right content here") {
+		t.Errorf("expected both region contents in html, got: %s", body)
+	}
+}
+
+func TestServerNonSplitLayoutUnchanged(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "test_nosplit_*.md")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	markdownContent := `---
+layout: "two-cols"
+---
+# Two Cols
+
+## Left heading
+Left paragraph.
+
+## Right heading
+Right paragraph.
+`
+	if _, err := tmpFile.WriteString(markdownContent); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	srv := server.NewServer(tmpFile.Name())
+	router := srv.Router()
+
+	req := httptest.NewRequest("GET", "/", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	body := rec.Body.String()
+	if strings.Contains(body, `class="split-header"`) || strings.Contains(body, `class="split-grid"`) {
+		t.Errorf("expected no split markup for a slide with no ::name:: regions, got: %s", body)
+	}
+}

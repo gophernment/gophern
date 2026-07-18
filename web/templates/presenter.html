@@ -332,11 +332,23 @@
             // Renders the preview content inside current/next container
             function renderSlideContent(container, slide) {
                 if (!slide) return;
-                
+
+                let inner = slide.HTMLContent || '';
+                if (slide.Regions && Object.keys(slide.Regions).length > 0) {
+                    const header = slide.HTMLContent ? `<div class="split-header">${slide.HTMLContent}</div>` : '';
+                    let gridStyle = '';
+                    if (slide.ColsCSS) gridStyle += `grid-template-columns: ${slide.ColsCSS};`;
+                    if (slide.RowsCSS) gridStyle += `grid-template-rows: ${slide.RowsCSS};`;
+                    const regions = Object.entries(slide.Regions)
+                        .map(([name, html]) => `<div class="region" style="grid-area: ${name};">${html}</div>`)
+                        .join('');
+                    inner = `${header}<div class="split-grid" style="${gridStyle}">${regions}</div>`;
+                }
+
                 container.innerHTML = `
-                    <div class="slide active ${slide.Layout || 'default'}" 
+                    <div class="slide active ${slide.Layout || 'default'}"
                          style="${slide.Background ? 'background: ' + slide.Background + ';' : ''} ${slide.Color ? 'color: ' + slide.Color + ';' : ''}">
-                        ${slide.HTMLContent}
+                        ${inner}
                     </div>
                 `;
             }
