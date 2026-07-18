@@ -3,6 +3,8 @@ package parser
 import (
 	"bytes"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
@@ -35,6 +37,14 @@ type Slide struct {
 	Background   string `yaml:"background"`
 	Color        string `yaml:"color"`
 	SpeakerNotes string
+
+	Ratio string `yaml:"ratio"`
+	Cols  string `yaml:"cols"`
+	Rows  string `yaml:"rows"`
+
+	Regions map[string]string
+	ColsCSS string
+	RowsCSS string
 }
 
 // ParseMarkdownFile parses a Markdown file into a Presentation struct.
@@ -54,6 +64,7 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 	}
 
 	var slide0Layout, slide0Background, slide0Color string
+	var slide0Ratio, slide0Cols, slide0Rows string
 	var remainingBlocks []string
 	if len(blocks) > 0 {
 		// Check if first block is empty (meaning the file started with ---)
@@ -81,6 +92,9 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 					slide0Layout = slide0Config.Layout
 					slide0Background = slide0Config.Background
 					slide0Color = slide0Config.Color
+					slide0Ratio = slide0Config.Ratio
+					slide0Cols = slide0Config.Cols
+					slide0Rows = slide0Config.Rows
 				}
 
 				remainingBlocks = blocks[2:]
@@ -103,6 +117,9 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 			slide.Layout = slide0Layout
 			slide.Background = slide0Background
 			slide.Color = slide0Color
+			slide.Ratio = slide0Ratio
+			slide.Cols = slide0Cols
+			slide.Rows = slide0Rows
 		}
 
 		// Check if the current block is a YAML frontmatter block
@@ -128,11 +145,37 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 			i++
 		}
 
-		htmlContent, err := RenderMarkdownToHTML(slide.RawMarkdown)
+		header, regions := splitRegions(slide.RawMarkdown)
+
+		htmlContent, err := RenderMarkdownToHTML(header)
 		if err != nil {
 			return nil, err
 		}
 		slide.HTMLContent = htmlContent
+
+		if len(regions) > 0 {
+			renderedRegions := make(map[string]string, len(regions))
+			for name, regionMarkdown := range regions {
+				var buf bytes.Buffer
+				if err := plainMarkdownRenderer.Convert([]byte(regionMarkdown), &buf); err != nil {
+					return nil, err
+				}
+				renderedRegions[name] = buf.String()
+			}
+			slide.Regions = renderedRegions
+		}
+
+		switch slide.Layout {
+		case "split-h":
+			slide.ColsCSS = ratioToGridTemplate(slide.Ratio, 2)
+		case "split-v":
+			slide.RowsCSS = ratioToGridTemplate(slide.Ratio, 2)
+		case "split-3":
+			slide.ColsCSS = ratioToGridTemplate(slide.Ratio, 3)
+		case "grid-4":
+			slide.ColsCSS = ratioToGridTemplate(slide.Cols, 2)
+			slide.RowsCSS = ratioToGridTemplate(slide.Rows, 2)
+		}
 
 		pres.Slides = append(pres.Slides, slide)
 		slideIdx++
@@ -167,6 +210,90 @@ func splitBySeparator(content string) []string {
 	return blocks
 }
 
+var regionMarkerRegex = regexp.MustCompile(`^::([a-zA-Z0-9_-]+)::$`)
+
+// splitRegions splits a slide's markdown into a header portion (everything
+// before the first ::name:: marker) and a map of named regions. Marker
+// lines inside fenced code blocks (``` or ~~~) are treated as plain text,
+// not markers, matching splitBySeparator's fence-tracking behavior.
+// Duplicate markers for the same name have their content appended.
+func splitRegions(markdown string) (header string, regions map[string]string) {
+	lines := strings.Split(markdown, "\n")
+
+	var headerLines []string
+	regions = make(map[string]string)
+	var currentName string
+	var currentLines []string
+	inCodeBlock := false
+	inRegion := false
+
+	flush := func() {
+		if !inRegion {
+			return
+		}
+		text := strings.TrimSpace(strings.Join(currentLines, "\n"))
+		if existing, ok := regions[currentName]; ok && existing != "" {
+			if text != "" {
+				regions[currentName] = existing + "\n\n" + text
+			}
+		} else {
+			regions[currentName] = text
+		}
+	}
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
+			inCodeBlock = !inCodeBlock
+		}
+
+		if !inCodeBlock {
+			if m := regionMarkerRegex.FindStringSubmatch(trimmed); m != nil {
+				flush()
+				currentName = m[1]
+				currentLines = nil
+				inRegion = true
+				continue
+			}
+		}
+
+		if inRegion {
+			currentLines = append(currentLines, line)
+		} else {
+			headerLines = append(headerLines, line)
+		}
+	}
+	flush()
+
+	header = strings.TrimSpace(strings.Join(headerLines, "\n"))
+	return header, regions
+}
+
+// ratioToGridTemplate converts a "/"-separated ratio string like "70/30"
+// into a CSS grid-template value like "70fr 30fr". It returns "" (signaling
+// "use the CSS default equal split") if ratio is empty, the part count
+// doesn't match wantParts, or any part isn't a positive number.
+func ratioToGridTemplate(ratio string, wantParts int) string {
+	if ratio == "" {
+		return ""
+	}
+	parts := strings.Split(ratio, "/")
+	if len(parts) != wantParts {
+		return ""
+	}
+
+	values := make([]string, len(parts))
+	for i, p := range parts {
+		trimmed := strings.TrimSpace(p)
+		n, err := strconv.ParseFloat(trimmed, 64)
+		if err != nil || n <= 0 {
+			return ""
+		}
+		values[i] = trimmed + "fr"
+	}
+	return strings.Join(values, " ")
+}
+
 var coreFrontmatterKeys = map[string]bool{
 	"title":       true,
 	"author":      true,
@@ -184,6 +311,9 @@ var coreFrontmatterKeys = map[string]bool{
 	"name":        true,
 	"route":       true,
 	"drawings":    true,
+	"ratio":       true,
+	"cols":        true,
+	"rows":        true,
 }
 
 // parseYAMLMap checks if a block is a valid non-empty YAML map.
@@ -312,6 +442,16 @@ var markdownRenderer = goldmark.New(
 		renderer.WithNodeRenderers(
 			util.Prioritized(&ChromaRenderer{}, 100),
 		),
+	),
+)
+
+// plainMarkdownRenderer is used for rendering regions without syntax highlighting.
+var plainMarkdownRenderer = goldmark.New(
+	goldmark.WithExtensions(
+		extension.Table,
+	),
+	goldmark.WithRendererOptions(
+		html.WithUnsafe(),
 	),
 )
 

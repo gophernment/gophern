@@ -554,3 +554,312 @@ background: red
 		}
 	})
 }
+
+func TestSplitLayoutRegions(t *testing.T) {
+	t.Run("split-h with two regions and ratio", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-split-h-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `---
+layout: "split-h"
+ratio: "70/30"
+---
+# Split Slide
+
+::left::
+Left content.
+- point 1
+- point 2
+
+::right::
+` + "```go\nfunc main() {}\n```\n"
+
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		if len(pres.Slides) != 1 {
+			t.Fatalf("Expected 1 slide, got %d", len(pres.Slides))
+		}
+
+		s := pres.Slides[0]
+		if !strings.Contains(s.HTMLContent, "<h1>Split Slide</h1>") {
+			t.Errorf("Expected header HTMLContent to contain the h1, got %q", s.HTMLContent)
+		}
+		if len(s.Regions) != 2 {
+			t.Fatalf("Expected 2 regions, got %d: %v", len(s.Regions), s.Regions)
+		}
+		if !strings.Contains(s.Regions["left"], "<li>point 1</li>") {
+			t.Errorf("Expected left region to contain rendered list, got %q", s.Regions["left"])
+		}
+		if !strings.Contains(s.Regions["right"], "func main") {
+			t.Errorf("Expected right region to contain rendered code block, got %q", s.Regions["right"])
+		}
+		if s.ColsCSS != "70fr 30fr" {
+			t.Errorf("Expected ColsCSS '70fr 30fr', got %q", s.ColsCSS)
+		}
+		if s.RowsCSS != "" {
+			t.Errorf("Expected empty RowsCSS for split-h, got %q", s.RowsCSS)
+		}
+	})
+
+	t.Run("no markers renders exactly like before", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-nomarkers-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `# Plain Slide
+
+Just a paragraph, no regions here.
+`
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		s := pres.Slides[0]
+		if len(s.Regions) != 0 {
+			t.Errorf("Expected no regions, got %v", s.Regions)
+		}
+		if !strings.Contains(s.HTMLContent, "<h1>Plain Slide</h1>") || !strings.Contains(s.HTMLContent, "Just a paragraph") {
+			t.Errorf("Expected full content in HTMLContent, got %q", s.HTMLContent)
+		}
+		if s.ColsCSS != "" || s.RowsCSS != "" {
+			t.Errorf("Expected empty ColsCSS/RowsCSS for non-split layout, got %q / %q", s.ColsCSS, s.RowsCSS)
+		}
+	})
+
+	t.Run("duplicate region markers append", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-dup-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `---
+layout: "split-h"
+---
+::left::
+First part.
+
+::right::
+Right content.
+
+::left::
+Second part.
+`
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		s := pres.Slides[0]
+		if !strings.Contains(s.Regions["left"], "First part") || !strings.Contains(s.Regions["left"], "Second part") {
+			t.Errorf("Expected left region to contain both parts, got %q", s.Regions["left"])
+		}
+	})
+
+	t.Run("marker inside fenced code block is not a region boundary", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-fenced-marker-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `---
+layout: "split-h"
+---
+::left::
+` + "```text\n::right::\n```\n" + `
+::right::
+Actual right content.
+`
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		s := pres.Slides[0]
+		if len(s.Regions) != 2 {
+			t.Fatalf("Expected 2 regions, got %d: %v", len(s.Regions), s.Regions)
+		}
+		if !strings.Contains(s.Regions["left"], "::right::") {
+			t.Errorf("Expected left region to contain the literal marker text from the code block, got %q", s.Regions["left"])
+		}
+		if !strings.Contains(s.Regions["right"], "Actual right content") {
+			t.Errorf("Expected right region content, got %q", s.Regions["right"])
+		}
+	})
+
+	t.Run("invalid ratio falls back to equal split", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-badratio-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `---
+layout: "split-h"
+ratio: "70/20/10"
+---
+::left::
+L
+
+::right::
+R
+`
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		s := pres.Slides[0]
+		if s.ColsCSS != "" {
+			t.Errorf("Expected empty ColsCSS for mismatched ratio part count, got %q", s.ColsCSS)
+		}
+	})
+
+	t.Run("grid-4 uses independent cols and rows", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-grid4-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `---
+layout: "grid-4"
+cols: "60/40"
+rows: "70/30"
+---
+::tl::
+A
+
+::tr::
+B
+
+::bl::
+C
+
+::br::
+D
+`
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		s := pres.Slides[0]
+		if len(s.Regions) != 4 {
+			t.Fatalf("Expected 4 regions, got %d: %v", len(s.Regions), s.Regions)
+		}
+		if s.ColsCSS != "60fr 40fr" {
+			t.Errorf("Expected ColsCSS '60fr 40fr', got %q", s.ColsCSS)
+		}
+		if s.RowsCSS != "70fr 30fr" {
+			t.Errorf("Expected RowsCSS '70fr 30fr', got %q", s.RowsCSS)
+		}
+	})
+
+	t.Run("non-numeric ratio falls back to equal split", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-nonnumeric-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `---
+layout: "split-h"
+ratio: "70/abc"
+---
+::left::
+L
+
+::right::
+R
+`
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		s := pres.Slides[0]
+		if s.ColsCSS != "" {
+			t.Errorf("Expected empty ColsCSS for non-numeric ratio part, got %q", s.ColsCSS)
+		}
+	})
+
+	t.Run("grid-4 with only cols set leaves rows empty", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-grid4-colsonly-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `---
+layout: "grid-4"
+cols: "60/40"
+---
+::tl::
+A
+
+::tr::
+B
+
+::bl::
+C
+
+::br::
+D
+`
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		s := pres.Slides[0]
+		if s.ColsCSS != "60fr 40fr" {
+			t.Errorf("Expected ColsCSS '60fr 40fr', got %q", s.ColsCSS)
+		}
+		if s.RowsCSS != "" {
+			t.Errorf("Expected empty RowsCSS when rows is unset, got %q", s.RowsCSS)
+		}
+	})
+}
