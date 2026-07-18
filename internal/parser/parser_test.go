@@ -600,8 +600,14 @@ Left content.
 		if !strings.Contains(s.Regions["left"], "<li>point 1</li>") {
 			t.Errorf("Expected left region to contain rendered list, got %q", s.Regions["left"])
 		}
-		if !strings.Contains(s.Regions["right"], "func main") {
-			t.Errorf("Expected right region to contain rendered code block, got %q", s.Regions["right"])
+		if !strings.Contains(s.Regions["right"], "<span") {
+			t.Errorf("Expected right region code block to be syntax-highlighted (contain <span>), got %q", s.Regions["right"])
+		}
+		if !strings.Contains(s.Regions["right"], ">func<") {
+			t.Errorf("Expected right region to contain highlighted 'func' token, got %q", s.Regions["right"])
+		}
+		if !strings.Contains(s.Regions["right"], ">main<") {
+			t.Errorf("Expected right region to contain highlighted 'main' token, got %q", s.Regions["right"])
 		}
 		if s.ColsCSS != "70fr 30fr" {
 			t.Errorf("Expected ColsCSS '70fr 30fr', got %q", s.ColsCSS)

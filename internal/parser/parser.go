@@ -156,11 +156,11 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 		if len(regions) > 0 {
 			renderedRegions := make(map[string]string, len(regions))
 			for name, regionMarkdown := range regions {
-				var buf bytes.Buffer
-				if err := plainMarkdownRenderer.Convert([]byte(regionMarkdown), &buf); err != nil {
+				regionHTML, err := RenderMarkdownToHTML(regionMarkdown)
+				if err != nil {
 					return nil, err
 				}
-				renderedRegions[name] = buf.String()
+				renderedRegions[name] = regionHTML
 			}
 			slide.Regions = renderedRegions
 		}
@@ -442,16 +442,6 @@ var markdownRenderer = goldmark.New(
 		renderer.WithNodeRenderers(
 			util.Prioritized(&ChromaRenderer{}, 100),
 		),
-	),
-)
-
-// plainMarkdownRenderer is used for rendering regions without syntax highlighting.
-var plainMarkdownRenderer = goldmark.New(
-	goldmark.WithExtensions(
-		extension.Table,
-	),
-	goldmark.WithRendererOptions(
-		html.WithUnsafe(),
 	),
 )
 
