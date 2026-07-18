@@ -318,3 +318,118 @@ Right paragraph.
 		t.Errorf("expected no split markup for a slide with no ::name:: regions, got: %s", body)
 	}
 }
+
+func TestServerFontFields(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "test_font_*.md")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	markdownContent := `---
+title: Font Test
+fonts:
+  sans: 'Space Grotesk'
+  mono: 'JetBrains Mono'
+---
+# Slide 1
+
+---
+headerFont: "Poppins, sans-serif"
+---
+# Slide 2
+`
+	if _, err := tmpFile.WriteString(markdownContent); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	srv := server.NewServer(tmpFile.Name())
+	router := srv.Router()
+
+	req := httptest.NewRequest("GET", "/", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	body := rec.Body.String()
+	if !strings.Contains(body, "--font-sans: Space Grotesk, &#39;Inter&#39;, -apple-system, BlinkMacSystemFont, &#34;Segoe UI&#34;, Roboto, Helvetica, Arial, sans-serif;") {
+		t.Errorf("expected global sans font override with fallback chain on body, got: %s", body)
+	}
+	if !strings.Contains(body, "--font-mono: JetBrains Mono, &#39;Fira Code&#39;, Consolas, Monaco, &#39;Courier New&#39;, monospace;") {
+		t.Errorf("expected global mono font override with fallback chain on body, got: %s", body)
+	}
+	if !strings.Contains(body, "--font-heading: Poppins, sans-serif, &#39;Inter&#39;, -apple-system, BlinkMacSystemFont, &#34;Segoe UI&#34;, Roboto, Helvetica, Arial, sans-serif;") {
+		t.Errorf("expected per-slide header font override with fallback chain, got: %s", body)
+	}
+}
+
+func TestServerGoogleFontsLink(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "test_gfonts_*.md")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	markdownContent := `---
+title: Font Test
+fonts:
+  sans: 'Space Grotesk'
+---
+# Slide 1
+`
+	if _, err := tmpFile.WriteString(markdownContent); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	srv := server.NewServer(tmpFile.Name())
+	router := srv.Router()
+
+	t.Run("presentation view links Google Fonts", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		body := rec.Body.String()
+		if !strings.Contains(body, "https://fonts.googleapis.com/css2?family=Space&#43;Grotesk") {
+			t.Errorf("expected Google Fonts stylesheet link, got: %s", body)
+		}
+	})
+
+	t.Run("presenter view links Google Fonts", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/presenter", nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		body := rec.Body.String()
+		if !strings.Contains(body, "https://fonts.googleapis.com/css2?family=Space&#43;Grotesk") {
+			t.Errorf("expected Google Fonts stylesheet link, got: %s", body)
+		}
+	})
+}
+
+func TestServerNoGoogleFontsLinkWithoutCustomFont(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "test_nogfonts_*.md")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	markdownContent := `# Slide 1`
+	if _, err := tmpFile.WriteString(markdownContent); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	srv := server.NewServer(tmpFile.Name())
+	router := srv.Router()
+
+	req := httptest.NewRequest("GET", "/", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	body := rec.Body.String()
+	if strings.Contains(body, "fonts.googleapis.com") {
+		t.Errorf("expected no Google Fonts link when no custom font is set, got: %s", body)
+	}
+}

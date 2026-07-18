@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bytes"
+	"net/url"
 	"os"
 	"regexp"
 	"strconv"
@@ -19,13 +20,38 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// DefaultSansFallback and DefaultMonoFallback are appended after any
+// user-supplied font (fonts.sans, fonts.mono, headerFont) so an unavailable
+// web font degrades gracefully to the built-in stack instead of the
+// browser's default font. Keep these in sync with the --font-sans/
+// --font-mono defaults in web/static/css/styles.css's :root block.
+const (
+	DefaultSansFallback = `'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`
+	DefaultMonoFallback = `'Fira Code', Consolas, Monaco, 'Courier New', monospace`
+)
+
 // Presentation represents the parsed presentation document.
 type Presentation struct {
-	Title       string `yaml:"title"`
-	Author      string `yaml:"author"`
-	Theme       string `yaml:"theme"`
-	AspectRatio string `yaml:"aspectRatio"`
+	Title       string      `yaml:"title"`
+	Author      string      `yaml:"author"`
+	Theme       string      `yaml:"theme"`
+	AspectRatio string      `yaml:"aspectRatio"`
+	Fonts       FontsConfig `yaml:"fonts"`
 	Slides      []Slide
+
+	// GoogleFontsURL is computed (not user-set) from Fonts.Sans, Fonts.Mono,
+	// and every slide's HeaderFont. It is a Google Fonts CSS2 stylesheet URL
+	// that live views (presentation/presenter) link to, so custom web fonts
+	// actually load instead of silently falling back. Left empty when no
+	// custom font is set. Never used by export (self-contained output has
+	// no network dependency).
+	GoogleFontsURL string
+}
+
+// FontsConfig holds the deck-wide font family overrides.
+type FontsConfig struct {
+	Sans string `yaml:"sans"`
+	Mono string `yaml:"mono"`
 }
 
 // Slide represents a single slide in the presentation.
@@ -45,6 +71,8 @@ type Slide struct {
 	Regions map[string]string
 	ColsCSS string
 	RowsCSS string
+
+	HeaderFont string `yaml:"headerFont"`
 }
 
 // ParseMarkdownFile parses a Markdown file into a Presentation struct.
@@ -65,6 +93,7 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 
 	var slide0Layout, slide0Background, slide0Color string
 	var slide0Ratio, slide0Cols, slide0Rows string
+	var slide0HeaderFont string
 	var remainingBlocks []string
 	if len(blocks) > 0 {
 		// Check if first block is empty (meaning the file started with ---)
@@ -85,6 +114,12 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 					if globalConfig.AspectRatio != "" {
 						pres.AspectRatio = globalConfig.AspectRatio
 					}
+					if globalConfig.Fonts.Sans != "" {
+						pres.Fonts.Sans = globalConfig.Fonts.Sans
+					}
+					if globalConfig.Fonts.Mono != "" {
+						pres.Fonts.Mono = globalConfig.Fonts.Mono
+					}
 				}
 
 				var slide0Config Slide
@@ -95,6 +130,7 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 					slide0Ratio = slide0Config.Ratio
 					slide0Cols = slide0Config.Cols
 					slide0Rows = slide0Config.Rows
+					slide0HeaderFont = slide0Config.HeaderFont
 				}
 
 				remainingBlocks = blocks[2:]
@@ -119,6 +155,7 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 			slide.Ratio = slide0Ratio
 			slide.Cols = slide0Cols
 			slide.Rows = slide0Rows
+			slide.HeaderFont = slide0HeaderFont
 		}
 
 		// Check if the current block is a YAML frontmatter block
@@ -180,7 +217,56 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 		slideIdx++
 	}
 
+	pres.GoogleFontsURL = buildGoogleFontsURL(pres)
+
 	return pres, nil
+}
+
+// genericCSSFontFamilies are CSS generic font-family keywords, not real font
+// names — never worth requesting from Google Fonts.
+var genericCSSFontFamilies = map[string]bool{
+	"serif": true, "sans-serif": true, "monospace": true, "cursive": true,
+	"fantasy": true, "system-ui": true, "ui-serif": true, "ui-sans-serif": true,
+	"ui-monospace": true, "ui-rounded": true, "math": true, "emoji": true, "fangsong": true,
+}
+
+// buildGoogleFontsURL constructs a Google Fonts CSS2 stylesheet URL from
+// every distinct custom font family referenced in the presentation
+// (Fonts.Sans, Fonts.Mono, and each slide's HeaderFont). Each field may hold
+// a full CSS font stack (e.g. "Poppins, 'Noto Sans Thai', sans-serif") —
+// every real font name in the list is fetched; generic CSS keywords like
+// "sans-serif" are not real fonts and are dropped. Returns "" if no custom
+// font is set anywhere in the presentation.
+func buildGoogleFontsURL(pres *Presentation) string {
+	seen := make(map[string]bool)
+	var families []string
+
+	add := func(value string) {
+		for _, part := range strings.Split(value, ",") {
+			name := strings.Trim(strings.TrimSpace(part), `'"`)
+			if name == "" || genericCSSFontFamilies[strings.ToLower(name)] || seen[name] {
+				continue
+			}
+			seen[name] = true
+			families = append(families, name)
+		}
+	}
+
+	add(pres.Fonts.Sans)
+	add(pres.Fonts.Mono)
+	for _, s := range pres.Slides {
+		add(s.HeaderFont)
+	}
+
+	if len(families) == 0 {
+		return ""
+	}
+
+	params := make([]string, len(families))
+	for i, f := range families {
+		params[i] = "family=" + url.QueryEscape(f)
+	}
+	return "https://fonts.googleapis.com/css2?" + strings.Join(params, "&") + "&display=swap"
 }
 
 // splitBySeparator splits the markdown content by lines that are exactly "---".
@@ -313,6 +399,8 @@ var coreFrontmatterKeys = map[string]bool{
 	"ratio":       true,
 	"cols":        true,
 	"rows":        true,
+	"fonts":       true,
+	"headerFont":  true,
 }
 
 // parseYAMLMap checks if a block is a valid non-empty YAML map.

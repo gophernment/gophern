@@ -6,6 +6,12 @@
     <title>Presenter Console - {{ .Title }}</title>
     <!-- Embed presentation stylesheet to render slides properly in the previews -->
     <link rel="stylesheet" href="/static/css/styles.css">
+    {{ if .GoogleFontsURL }}
+    <!-- Custom font(s) requested via fonts.sans/fonts.mono/headerFont -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="{{ .GoogleFontsURL }}">
+    {{ end }}
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/sse.js"></script>
     
@@ -246,7 +252,7 @@
         }
     </style>
 </head>
-<body>
+<body style="{{ if .Fonts.Sans }}--font-sans: {{ sansFontFamily .Fonts.Sans }};{{ end }}{{ if .Fonts.Mono }}--font-mono: {{ monoFontFamily .Fonts.Mono }};{{ end }}">
     <!-- Presenter Header -->
     <header class="presenter-header">
         <div class="presentation-title">{{ .Title }}</div>
@@ -329,6 +335,9 @@
             window.addEventListener('resize', updatePreviewScales);
             updatePreviewScales();
 
+            // Keep in sync with parser.DefaultSansFallback (internal/parser/parser.go)
+            const DEFAULT_SANS_FALLBACK = `'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
+
             // Renders the preview content inside current/next container
             function renderSlideContent(container, slide) {
                 if (!slide) return;
@@ -347,7 +356,7 @@
 
                 container.innerHTML = `
                     <div class="slide active ${slide.Layout || 'default'}"
-                         style="${slide.Background ? 'background: ' + slide.Background + ';' : ''} ${slide.Color ? 'color: ' + slide.Color + ';' : ''}">
+                         style="${slide.Background ? 'background: ' + slide.Background + ';' : ''} ${slide.Color ? 'color: ' + slide.Color + ';' : ''} ${slide.HeaderFont ? '--font-heading: ' + slide.HeaderFont + ', ' + DEFAULT_SANS_FALLBACK + ';' : ''}">
                         ${inner}
                     </div>
                 `;

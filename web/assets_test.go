@@ -35,7 +35,9 @@ func TestTemplateCompiles(t *testing.T) {
 		}
 
 		tmpl, err := template.New(path).Funcs(template.FuncMap{
-			"safe": func(s string) template.HTML { return template.HTML(s) },
+			"safe":           func(s string) template.HTML { return template.HTML(s) },
+			"sansFontFamily": func(s string) template.CSS { return template.CSS(s) },
+			"monoFontFamily": func(s string) template.CSS { return template.CSS(s) },
 		}).Parse(string(htmlData))
 		if err != nil {
 			t.Fatalf("failed to parse template %s: %v", path, err)

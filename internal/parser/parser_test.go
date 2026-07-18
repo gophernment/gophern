@@ -869,3 +869,284 @@ D
 		}
 	})
 }
+
+func TestFontFields(t *testing.T) {
+	t.Run("global fonts.sans and fonts.mono from top-level frontmatter", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-font-global-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `---
+title: Font Test
+fonts:
+  sans: 'Space Grotesk'
+  mono: 'JetBrains Mono'
+---
+# Slide 1
+
+---
+# Slide 2
+`
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		if pres.Fonts.Sans != "Space Grotesk" {
+			t.Errorf("Expected Fonts.Sans 'Space Grotesk', got %q", pres.Fonts.Sans)
+		}
+		if pres.Fonts.Mono != "JetBrains Mono" {
+			t.Errorf("Expected Fonts.Mono 'JetBrains Mono', got %q", pres.Fonts.Mono)
+		}
+	})
+
+	t.Run("no global fonts leaves Fonts empty", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-font-empty-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `# Slide 1`
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		if pres.Fonts.Sans != "" || pres.Fonts.Mono != "" {
+			t.Errorf("Expected empty Fonts, got %+v", pres.Fonts)
+		}
+	})
+
+	t.Run("per-slide headerFont overrides only that slide", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-font-header-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `---
+title: Font Test
+fonts:
+  sans: 'Space Grotesk'
+---
+# Slide 1 (uses global font only)
+
+---
+headerFont: "Poppins, sans-serif"
+---
+# Slide 2 (custom header font)
+`
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		if len(pres.Slides) != 2 {
+			t.Fatalf("Expected 2 slides, got %d", len(pres.Slides))
+		}
+		if pres.Slides[0].HeaderFont != "" {
+			t.Errorf("Expected slide 0 HeaderFont empty, got %q", pres.Slides[0].HeaderFont)
+		}
+		if pres.Slides[1].HeaderFont != "Poppins, sans-serif" {
+			t.Errorf("Expected slide 1 HeaderFont 'Poppins, sans-serif', got %q", pres.Slides[1].HeaderFont)
+		}
+	})
+}
+
+func TestGoogleFontsURL(t *testing.T) {
+	t.Run("builds URL from global sans and mono fonts", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-gfonts-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `---
+title: Font Test
+fonts:
+  sans: 'Space Grotesk'
+  mono: 'JetBrains Mono'
+---
+# Slide 1
+`
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		if !strings.Contains(pres.GoogleFontsURL, "family=Space+Grotesk") {
+			t.Errorf("expected GoogleFontsURL to contain 'family=Space+Grotesk', got %q", pres.GoogleFontsURL)
+		}
+		if !strings.Contains(pres.GoogleFontsURL, "family=JetBrains+Mono") {
+			t.Errorf("expected GoogleFontsURL to contain 'family=JetBrains+Mono', got %q", pres.GoogleFontsURL)
+		}
+		if !strings.HasPrefix(pres.GoogleFontsURL, "https://fonts.googleapis.com/css2?") {
+			t.Errorf("expected GoogleFontsURL to be a Google Fonts CSS2 URL, got %q", pres.GoogleFontsURL)
+		}
+	})
+
+	t.Run("headerFont with fallback keyword only pulls the primary family name", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-gfonts-header-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `# Slide 1
+
+---
+headerFont: "Poppins, sans-serif"
+---
+# Slide 2
+`
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		if !strings.Contains(pres.GoogleFontsURL, "family=Poppins") {
+			t.Errorf("expected GoogleFontsURL to contain 'family=Poppins', got %q", pres.GoogleFontsURL)
+		}
+		if strings.Contains(pres.GoogleFontsURL, "sans-serif") {
+			t.Errorf("expected 'sans-serif' fallback keyword to be excluded, got %q", pres.GoogleFontsURL)
+		}
+	})
+
+	t.Run("multiple real fonts in one field are all fetched (e.g. latin font + Thai fallback)", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-gfonts-multi-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `---
+fonts:
+  sans: "Poppins, 'Noto Sans Thai'"
+---
+# Slide 1
+`
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		if !strings.Contains(pres.GoogleFontsURL, "family=Poppins") {
+			t.Errorf("expected GoogleFontsURL to contain 'family=Poppins', got %q", pres.GoogleFontsURL)
+		}
+		if !strings.Contains(pres.GoogleFontsURL, "family=Noto+Sans+Thai") {
+			t.Errorf("expected GoogleFontsURL to also contain 'family=Noto+Sans+Thai', got %q", pres.GoogleFontsURL)
+		}
+	})
+
+	t.Run("generic CSS keyword after two real fonts is still excluded", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-gfonts-multi-generic-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `---
+fonts:
+  sans: "Poppins, 'Noto Sans Thai', sans-serif"
+---
+# Slide 1
+`
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		if !strings.Contains(pres.GoogleFontsURL, "family=Poppins") || !strings.Contains(pres.GoogleFontsURL, "family=Noto+Sans+Thai") {
+			t.Errorf("expected both real fonts fetched, got %q", pres.GoogleFontsURL)
+		}
+		if strings.Contains(pres.GoogleFontsURL, "sans-serif") {
+			t.Errorf("expected generic keyword 'sans-serif' excluded even after real fonts, got %q", pres.GoogleFontsURL)
+		}
+	})
+
+	t.Run("duplicate font names across fields are deduplicated", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-gfonts-dup-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `---
+fonts:
+  sans: 'Poppins'
+---
+# Slide 1
+
+---
+headerFont: 'Poppins'
+---
+# Slide 2
+`
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		count := strings.Count(pres.GoogleFontsURL, "family=Poppins")
+		if count != 1 {
+			t.Errorf("expected 'family=Poppins' to appear once (deduplicated), got %d times in %q", count, pres.GoogleFontsURL)
+		}
+	})
+
+	t.Run("no custom fonts leaves GoogleFontsURL empty", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-gfonts-empty-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `# Slide 1`
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		if pres.GoogleFontsURL != "" {
+			t.Errorf("expected empty GoogleFontsURL, got %q", pres.GoogleFontsURL)
+		}
+	})
+}

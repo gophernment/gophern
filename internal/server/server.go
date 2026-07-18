@@ -106,7 +106,9 @@ func (s *Server) handlePresentation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tmpl, err := template.New("presentation.html").Funcs(template.FuncMap{
-		"safe": func(content string) template.HTML { return template.HTML(content) },
+		"safe":           func(content string) template.HTML { return template.HTML(content) },
+		"sansFontFamily": func(custom string) template.CSS { return template.CSS(custom + ", " + parser.DefaultSansFallback) },
+		"monoFontFamily": func(custom string) template.CSS { return template.CSS(custom + ", " + parser.DefaultMonoFallback) },
 	}).ParseFS(web.Assets, "templates/presentation.html")
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error loading template: %v", err), http.StatusInternalServerError)
@@ -132,6 +134,8 @@ func (s *Server) handlePresenter(w http.ResponseWriter, r *http.Request) {
 			b, err := json.Marshal(v)
 			return template.JS(b), err
 		},
+		"sansFontFamily": func(custom string) template.CSS { return template.CSS(custom + ", " + parser.DefaultSansFallback) },
+		"monoFontFamily": func(custom string) template.CSS { return template.CSS(custom + ", " + parser.DefaultMonoFallback) },
 	}).ParseFS(web.Assets, "templates/presenter.html")
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error loading template: %v", err), http.StatusInternalServerError)

@@ -89,6 +89,7 @@ body {
   margin-top: 0;
   margin-bottom: 2rem;
   color: var(--text-primary);
+  font-family: var(--font-heading, var(--font-sans));
 }
 
 /* Slide Transition States */

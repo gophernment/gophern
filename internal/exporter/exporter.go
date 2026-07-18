@@ -26,7 +26,9 @@ func Export(markdownPath, outputPath string) error {
 	}
 
 	tmpl, err := template.New("export.html").Funcs(template.FuncMap{
-		"safe": func(content string) template.HTML { return template.HTML(content) },
+		"safe":           func(content string) template.HTML { return template.HTML(content) },
+		"sansFontFamily": func(custom string) template.CSS { return template.CSS(custom + ", " + parser.DefaultSansFallback) },
+		"monoFontFamily": func(custom string) template.CSS { return template.CSS(custom + ", " + parser.DefaultMonoFallback) },
 	}).ParseFS(web.Assets, "templates/export.html")
 	if err != nil {
 		return err
@@ -34,6 +36,7 @@ func Export(markdownPath, outputPath string) error {
 
 	type ExportData struct {
 		Title  string
+		Fonts  parser.FontsConfig
 		Slides []parser.Slide
 		CSS    template.CSS
 		JS     template.JS
@@ -41,6 +44,7 @@ func Export(markdownPath, outputPath string) error {
 
 	data := ExportData{
 		Title:  pres.Title,
+		Fonts:  pres.Fonts,
 		Slides: pres.Slides,
 		CSS:    template.CSS(cssBytes),
 		JS:     template.JS(jsBytes),

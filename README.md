@@ -102,6 +102,41 @@ color: "#ffffff"
 - `cover`: Centered cover page layout with gradient background support.
 - `two-cols`: Dual-column layout (useful for side-by-side text/images or text/code blocks).
 
+### Custom Fonts
+Set the deck's main fonts with `fonts.sans` / `fonts.mono` in the global frontmatter (first slide). Override just one slide's heading font with `headerFont` in that slide's local frontmatter — everything else on the slide keeps using the main font.
+
+```markdown
+---
+title: "Project Pitch"
+fonts:
+  sans: 'Space Grotesk'
+  mono: 'JetBrains Mono'
+---
+# Uses the main font
+
+---
+headerFont: "Poppins, sans-serif"
+---
+# This slide's heading uses its own font
+```
+
+> **Note:** `serve` mode (and `/presenter`) automatically link to [Google Fonts](https://fonts.google.com) for any custom font you set (`fonts.sans`, `fonts.mono`, `headerFont`), so most Google Font names just work — no extra setup needed. This does reach out to Google's CDN over the network. `export` does **not** add this link, to keep the exported file fully self-contained and offline — if the font you named isn't installed on the machine viewing the exported file, it falls back to the built-in stack (`Inter` for sans, `Fira Code` for mono) instead.
+
+#### Multiple fonts / non-Latin scripts (e.g. Thai)
+
+Each font field accepts a full comma-separated CSS font stack, not just one name. This is useful when your primary font has no glyphs for a script like Thai — list a script-specific font after it as a fallback:
+
+```markdown
+---
+title: "งานนำเสนอ"
+fonts:
+  sans: "Poppins, 'Noto Sans Thai'"
+---
+# หัวข้อ (Poppins สำหรับ Latin, Noto Sans Thai สำหรับไทย)
+```
+
+The browser tries each font in order per character, so Latin text renders in `Poppins` and Thai text automatically falls through to `Noto Sans Thai`. In `serve`/`presenter`, every real font name in the stack is fetched from Google Fonts (generic CSS keywords like `sans-serif` are ignored, not fetched).
+
 ### Speaker Notes
 Add speaker notes inside an HTML comment (`<!-- ... -->`) placed at the very bottom of the slide block:
 
