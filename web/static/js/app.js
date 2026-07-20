@@ -133,6 +133,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let isHandlingSSE = false;
 
+  // Hot-reload (triggered when the source markdown file changes) does a
+  // full page reload, which would otherwise always snap back to slide 0
+  // and lose the scroll position inside a long slide. Stash both in
+  // sessionStorage right before reloading and restore them once the new
+  // page's slide index is confirmed (per-tab only, not synced across
+  // viewers — the SSE slide index is what stays synced across viewers).
+  function saveScrollState() {
+    const activeSlide = slides[currentIndex];
+    sessionStorage.setItem('gophern:scrollIndex', String(currentIndex));
+    sessionStorage.setItem('gophern:scrollTop', String(activeSlide ? activeSlide.scrollTop : 0));
+  }
+
+  function restoreScrollState(index) {
+    const savedIndex = sessionStorage.getItem('gophern:scrollIndex');
+    const savedScroll = sessionStorage.getItem('gophern:scrollTop');
+    if (savedIndex === null || savedScroll === null) return;
+    if (parseInt(savedIndex, 10) !== index) return;
+    const activeSlide = slides[index];
+    if (activeSlide) {
+      activeSlide.scrollTop = parseInt(savedScroll, 10);
+    }
+  }
+
   if (window.location.protocol.startsWith('http')) {
     // Connect to Server-Sent Events stream
     const eventSource = new EventSource('/events');
@@ -140,14 +163,18 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const data = JSON.parse(event.data);
         if (data.reload) {
+          saveScrollState();
           window.location.reload();
           return;
         }
         const idx = data.slide;
-        if (!isNaN(idx) && idx !== currentIndex) {
-          isHandlingSSE = true;
-          goToSlide(idx);
-          isHandlingSSE = false;
+        if (!isNaN(idx)) {
+          if (idx !== currentIndex) {
+            isHandlingSSE = true;
+            goToSlide(idx);
+            isHandlingSSE = false;
+          }
+          restoreScrollState(idx);
         }
       } catch (err) {
         console.error("Failed to parse SSE JSON payload:", err);

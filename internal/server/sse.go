@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 )
 
 // Broker handles multiple SSE clients.
@@ -61,10 +62,20 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Listen for client context done
 	ctx := r.Context()
 
+	// Idle SSE connections can be silently dropped by the OS/browser without
+	// either side noticing, which then never reconnects to the /events
+	// stream and stops receiving reload/slide-sync broadcasts. A periodic
+	// heartbeat comment keeps the connection alive.
+	heartbeat := time.NewTicker(20 * time.Second)
+	defer heartbeat.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case <-heartbeat.C:
+			fmt.Fprintf(w, ": heartbeat\n\n")
+			flusher.Flush()
 		case msg, open := <-ch:
 			if !open {
 				return
