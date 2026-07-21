@@ -132,6 +132,7 @@ color: "#f8fafc"
 - `background` — any CSS `background` value (color, gradient, image URL)
 - `color` — the slide's base text color
 - `headerFont` — overrides just this slide's `<h1>` font
+- `fragments` — step-reveal this slide's list items one at a time (see slide 19)
 
 ## Split-layout-only keys
 - `ratio` — e.g. `"60/40"` for `split-h`/`split-v`, `"30/40/30"` for `split-3`
@@ -500,6 +501,41 @@ fullscreen button in the bottom-right is always visible either way.
 Both keys default to false (hidden) and only affect the live serve
 Presentation View — the Presenter Console and exported HTML always show
 their own controls unconditionally.
+-->
+
+---
+layout: "default"
+background: "#1e293b"
+color: "#f8fafc"
+fragments: true
+---
+
+# 19. Fragments: step-reveal list items
+
+Set `fragments: true` in a slide's local frontmatter to reveal that
+slide's list items one at a time instead of all at once.
+
+- Press **→**, **Space**, or click "Next" to reveal this line
+- Then this one
+- Then this one — only once every item is shown does the same key move
+  you on to the next slide
+- Going **back** re-enters this slide with every item already visible,
+  then hides them one at a time on further "Prev" presses
+
+```markdown
+---
+fragments: true
+---
+# Title
+- Revealed first
+- Revealed second
+- Revealed third
+```
+
+<!--
+fragments only affects <li> elements rendered from this slide's own
+markdown (every list on the slide, including nested ones, numbered in
+document order) — it's a per-slide opt-in, not a deck-wide default.
 -->
 
 ---

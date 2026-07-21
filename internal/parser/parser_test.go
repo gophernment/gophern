@@ -968,6 +968,59 @@ headerFont: "Poppins, sans-serif"
 	})
 }
 
+func TestFragments(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "slides-fragments-*.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	content := `# Slide 1
+
+- Alpha
+- Beta
+
+---
+fragments: true
+---
+
+# Slide 2
+
+- Alpha
+- Beta
+- Gamma
+`
+	if _, err := tmpFile.WriteString(content); err != nil {
+		t.Fatal(err)
+	}
+	tmpFile.Close()
+
+	pres, err := ParseMarkdownFile(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("ParseMarkdownFile failed: %v", err)
+	}
+	if len(pres.Slides) != 2 {
+		t.Fatalf("Expected 2 slides, got %d", len(pres.Slides))
+	}
+
+	if pres.Slides[0].Fragments {
+		t.Errorf("Expected slide 0 Fragments false, got true")
+	}
+	if strings.Contains(pres.Slides[0].HTMLContent, `class="fragment"`) {
+		t.Errorf("Expected slide 0 HTML to have no fragment classing, got %q", pres.Slides[0].HTMLContent)
+	}
+
+	if !pres.Slides[1].Fragments {
+		t.Errorf("Expected slide 1 Fragments true, got false")
+	}
+	want := `<li class="fragment" data-fragment-index="0">Alpha</li>` + "\n" +
+		`<li class="fragment" data-fragment-index="1">Beta</li>` + "\n" +
+		`<li class="fragment" data-fragment-index="2">Gamma</li>`
+	if !strings.Contains(pres.Slides[1].HTMLContent, want) {
+		t.Errorf("Expected slide 1 HTML to contain numbered fragment <li> tags, got %q", pres.Slides[1].HTMLContent)
+	}
+}
+
 func TestControlsVisibilityFields(t *testing.T) {
 	t.Run("default false when unset", func(t *testing.T) {
 		tmpFile, err := os.CreateTemp("", "slides-controls-default-*.md")

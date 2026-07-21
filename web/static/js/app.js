@@ -11,6 +11,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let currentIndex = 0;
 
+  // Fragment stepping (slide frontmatter: fragments: true). -1 means no
+  // fragment on the current slide is revealed yet; each next/prev step
+  // moves this by one until it runs out, only then does nav fall through
+  // to actually changing slides.
+  let fragmentIndex = -1;
+
+  function getFragments(slideIndex) {
+    return Array.from(slides[slideIndex].querySelectorAll('.fragment'));
+  }
+
+  function applyFragmentVisibility() {
+    getFragments(currentIndex).forEach((el, i) => {
+      el.classList.toggle('visible', i <= fragmentIndex);
+    });
+  }
+
   // Aspect Ratio Scaling (dimensions come from --slide-width/--slide-height,
   // set per-deck in the page's inline body style from the parsed aspectRatio).
   // Read the computed style from #slide-container (a descendant of <body>),
@@ -41,7 +57,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function goToSlide(index) {
     if (index < 0 || index >= slides.length) return;
 
+    // Entering a slide forward starts with no fragment revealed; entering
+    // it backward (returning from a later slide) shows all of them, same
+    // as reveal.js's default fragment behavior.
+    const enteringBackward = index < currentIndex;
     currentIndex = index;
+    fragmentIndex = enteringBackward ? getFragments(currentIndex).length - 1 : -1;
+    applyFragmentVisibility();
 
     slides.forEach((slide, i) => {
       slide.classList.remove('active', 'past', 'future');
@@ -80,12 +102,23 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function nextSlide() {
+    const total = getFragments(currentIndex).length;
+    if (fragmentIndex < total - 1) {
+      fragmentIndex++;
+      applyFragmentVisibility();
+      return;
+    }
     if (currentIndex < slides.length - 1) {
       goToSlide(currentIndex + 1);
     }
   }
 
   function prevSlide() {
+    if (fragmentIndex > -1) {
+      fragmentIndex--;
+      applyFragmentVisibility();
+      return;
+    }
     if (currentIndex > 0) {
       goToSlide(currentIndex - 1);
     }

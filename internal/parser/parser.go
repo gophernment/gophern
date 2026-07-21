@@ -107,6 +107,13 @@ type Slide struct {
 	RowsCSS string
 
 	HeaderFont string `yaml:"headerFont"`
+
+	// Fragments, when true, numbers every <li> rendered from this slide's
+	// markdown (in document order) and marks it with class="fragment" so
+	// the live view reveals list items one at a time on next/prev nav
+	// instead of showing the whole list at once (see applyFragmentClasses
+	// and web/static/js/app.js's fragment stepping logic).
+	Fragments bool `yaml:"fragments"`
 }
 
 // ParseMarkdownFile parses a Markdown file into a Presentation struct.
@@ -128,6 +135,7 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 	var slide0Layout, slide0Background, slide0Color string
 	var slide0Ratio, slide0Cols, slide0Rows string
 	var slide0HeaderFont string
+	var slide0Fragments bool
 	var remainingBlocks []string
 	if len(blocks) > 0 {
 		// Check if first block is empty (meaning the file started with ---)
@@ -167,6 +175,7 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 					slide0Cols = slide0Config.Cols
 					slide0Rows = slide0Config.Rows
 					slide0HeaderFont = slide0Config.HeaderFont
+					slide0Fragments = slide0Config.Fragments
 				}
 
 				remainingBlocks = blocks[2:]
@@ -192,6 +201,7 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 			slide.Cols = slide0Cols
 			slide.Rows = slide0Rows
 			slide.HeaderFont = slide0HeaderFont
+			slide.Fragments = slide0Fragments
 		}
 
 		// Check if the current block is a YAML frontmatter block
@@ -222,6 +232,9 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 		htmlContent, err := RenderMarkdownToHTML(header)
 		if err != nil {
 			return nil, err
+		}
+		if slide.Fragments {
+			htmlContent = applyFragmentClasses(htmlContent)
 		}
 		slide.HTMLContent = htmlContent
 
@@ -438,6 +451,7 @@ var coreFrontmatterKeys = map[string]bool{
 	"rows":            true,
 	"fonts":           true,
 	"headerFont":      true,
+	"fragments":       true,
 	"showControls":    true,
 	"showSlideNumber": true,
 }
@@ -557,6 +571,24 @@ func extractSpeakerNotes(markdown string) (string, string) {
 	notes := markdown[startIdx+4 : endIdx]
 	cleanMarkdown := markdown[:startIdx] + markdown[endIdx+3:]
 	return strings.TrimSpace(notes), strings.TrimSpace(cleanMarkdown)
+}
+
+var listItemOpenTagRegex = regexp.MustCompile(`<li>`)
+
+// applyFragmentClasses numbers every <li> goldmark rendered for this slide,
+// in document order starting at 0, and marks it class="fragment" with a
+// data-fragment-index. web/static/js/app.js uses that numbering to reveal
+// list items one at a time on next/prev nav instead of showing the whole
+// list at once. Goldmark never emits attributes on a bare <li> itself (tight
+// or loose list, nesting included), so matching the literal opening tag is
+// safe and doesn't require a full HTML parse.
+func applyFragmentClasses(htmlContent string) string {
+	idx := 0
+	return listItemOpenTagRegex.ReplaceAllStringFunc(htmlContent, func(string) string {
+		tag := `<li class="fragment" data-fragment-index="` + strconv.Itoa(idx) + `">`
+		idx++
+		return tag
+	})
 }
 
 var markdownRenderer = goldmark.New(
