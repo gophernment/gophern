@@ -55,6 +55,8 @@ gophern serve [-port 8080] example.md
 
 Navigating slides on either window (using arrow keys, space, or buttons) will automatically sync the other window instantly via Server-Sent Events.
 
+A fullscreen toggle button always sits in the bottom-right corner of the **Presentation View**. The prev/next nav buttons and the slide-number indicator (`1 / 12`) are hidden by default — enable them per deck with `showControls` / `showSlideNumber` in the global frontmatter (see [Show/Hide Navigation Controls](#showhide-navigation-controls)).
+
 ### 2. Export Standalone Slide Deck (`export`)
 Export the presentation into a single self-contained HTML file for distribution or offline use:
 
@@ -136,6 +138,20 @@ fonts:
 ```
 
 The browser tries each font in order per character, so Latin text renders in `Poppins` and Thai text automatically falls through to `Noto Sans Thai`. In `serve`/`presenter`, every real font name in the stack is fetched from Google Fonts (generic CSS keywords like `sans-serif` are ignored, not fetched).
+
+### Show/Hide Navigation Controls
+The prev/next buttons and the slide-number indicator (`1 / 12`) in the **Presentation View** are hidden by default. Turn them on per deck with `showControls` / `showSlideNumber` in the global frontmatter (first slide):
+
+```markdown
+---
+title: "Project Pitch"
+showControls: true
+showSlideNumber: true
+---
+# Main Cover Slide
+```
+
+The fullscreen toggle button is always visible regardless of these settings. This config only affects `serve`'s Presentation View — the Presenter Console and `export` output are unaffected.
 
 ### Speaker Notes
 Add speaker notes inside an HTML comment (`<!-- ... -->`) placed at the very bottom of the slide block:

@@ -5,6 +5,8 @@ theme: "slate"
 aspectRatio: "16:9"
 fonts:
   sans: "Poppins, 'Noto Sans Thai'"
+showControls: true
+showSlideNumber: true
 layout: "cover"
 background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)"
 color: "#ffffff"
@@ -14,7 +16,9 @@ color: "#ffffff"
 ### A complete, runnable tour of every feature
 
 This deck is a real `.md` file — run it with `gophern serve USAGE.md`
-and navigate with **→**, **Space**, or **Page Down**.
+and navigate with **→**, **Space**, or **Page Down**. A fullscreen
+button sits in the bottom-right corner; the prev/next buttons and slide
+number are off by default (turned on for this deck — see slide 18).
 
 <!--
 This is USAGE.md: a hands-on manual. Every syntax shown on a slide is the
@@ -468,6 +472,34 @@ in Slide 0's frontmatter to take effect, unlike `background`/`color`/
 `headerFont` which work per-slide. This deck sets it once on the cover
 slide, so every slide (including this one) already renders with the Thai
 fallback active.
+-->
+
+---
+layout: "default"
+background: "#0f172a"
+color: "#f8fafc"
+---
+
+# 18. Show/Hide Navigation Controls
+
+The prev/next buttons and the `1 / N` slide-number indicator in the
+**Presentation View** (`serve`, not `/presenter`) are hidden by default.
+This deck turns them on via its global frontmatter:
+
+```markdown
+---
+showControls: true
+showSlideNumber: true
+---
+```
+
+Leave them unset (or `false`) for a chrome-free presentation. The
+fullscreen button in the bottom-right is always visible either way.
+
+<!--
+Both keys default to false (hidden) and only affect the live serve
+Presentation View — the Presenter Console and exported HTML always show
+their own controls unconditionally.
 -->
 
 ---

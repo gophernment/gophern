@@ -36,13 +36,16 @@
         <div id="progress-container" class="progress-bar-container">
             <div id="progress-bar" class="progress-bar"></div>
         </div>
-        <div id="slide-number" class="slide-number"></div>
+        {{ if .ShowSlideNumber }}<div id="slide-number" class="slide-number"></div>{{ end }}
     </div>
 
     <!-- Navigation Overlays -->
     <div class="nav-buttons">
+        {{ if .ShowControls }}
         <button id="btn-prev" class="nav-btn" aria-label="Previous Slide">← Prev</button>
         <button id="btn-next" class="nav-btn" aria-label="Next Slide">Next →</button>
+        {{ end }}
+        <button id="btn-fullscreen" class="nav-btn" aria-label="Toggle Fullscreen">⛶</button>
     </div>
 
     <!-- Embed presentation javascript -->

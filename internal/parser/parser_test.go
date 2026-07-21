@@ -968,6 +968,63 @@ headerFont: "Poppins, sans-serif"
 	})
 }
 
+func TestControlsVisibilityFields(t *testing.T) {
+	t.Run("default false when unset", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-controls-default-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `# Slide 1`
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		if pres.ShowControls {
+			t.Errorf("Expected ShowControls false by default, got true")
+		}
+		if pres.ShowSlideNumber {
+			t.Errorf("Expected ShowSlideNumber false by default, got true")
+		}
+	})
+
+	t.Run("enabled via global frontmatter", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "slides-controls-enabled-*.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		content := `---
+showControls: true
+showSlideNumber: true
+---
+# Slide 1
+`
+		if _, err := tmpFile.WriteString(content); err != nil {
+			t.Fatal(err)
+		}
+		tmpFile.Close()
+
+		pres, err := ParseMarkdownFile(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("ParseMarkdownFile failed: %v", err)
+		}
+		if !pres.ShowControls {
+			t.Errorf("Expected ShowControls true, got false")
+		}
+		if !pres.ShowSlideNumber {
+			t.Errorf("Expected ShowSlideNumber true, got false")
+		}
+	})
+}
+
 func TestGoogleFontsURL(t *testing.T) {
 	t.Run("builds URL from global sans and mono fonts", func(t *testing.T) {
 		tmpFile, err := os.CreateTemp("", "slides-gfonts-*.md")

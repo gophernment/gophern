@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const slides = Array.from(container.querySelectorAll('.slide'));
   const btnPrev = document.getElementById('btn-prev');
   const btnNext = document.getElementById('btn-next');
+  const btnFullscreen = document.getElementById('btn-fullscreen');
   const progressBar = document.querySelector('.progress-bar');
   const slideNum = document.querySelector('.slide-number');
 
@@ -122,6 +123,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (btnNext) {
     btnNext.addEventListener('click', nextSlide);
+  }
+
+  // Toggle fullscreen on the whole page
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      document.documentElement.requestFullscreen();
+    }
+  }
+
+  if (btnFullscreen) {
+    btnFullscreen.addEventListener('click', toggleFullscreen);
+    document.addEventListener('fullscreenchange', () => {
+      btnFullscreen.textContent = document.fullscreenElement ? '⤢' : '⛶';
+    });
   }
 
   // Bind scale updater to window resize

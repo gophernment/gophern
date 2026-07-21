@@ -39,6 +39,13 @@ type Presentation struct {
 	Fonts       FontsConfig `yaml:"fonts"`
 	Slides      []Slide
 
+	// ShowControls and ShowSlideNumber toggle the prev/next nav buttons and
+	// the slide-number indicator ("1 / 66") in the live presentation view.
+	// Both default to false (hidden) and must be explicitly enabled in the
+	// deck's frontmatter.
+	ShowControls    bool `yaml:"showControls"`
+	ShowSlideNumber bool `yaml:"showSlideNumber"`
+
 	// GoogleFontsURL is computed (not user-set) from Fonts.Sans, Fonts.Mono,
 	// and every slide's HeaderFont. It is a Google Fonts CSS2 stylesheet URL
 	// that live views (presentation/presenter) link to, so custom web fonts
@@ -120,6 +127,8 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 					if globalConfig.Fonts.Mono != "" {
 						pres.Fonts.Mono = globalConfig.Fonts.Mono
 					}
+					pres.ShowControls = globalConfig.ShowControls
+					pres.ShowSlideNumber = globalConfig.ShowSlideNumber
 				}
 
 				var slide0Config Slide
@@ -380,27 +389,29 @@ func ratioToGridTemplate(ratio string, wantParts int) string {
 }
 
 var coreFrontmatterKeys = map[string]bool{
-	"title":       true,
-	"author":      true,
-	"theme":       true,
-	"aspectRatio": true,
-	"layout":      true,
-	"background":  true,
-	"color":       true,
-	"class":       true,
-	"transition":  true,
-	"disabled":    true,
-	"clicks":      true,
-	"preload":     true,
-	"src":         true,
-	"name":        true,
-	"route":       true,
-	"drawings":    true,
-	"ratio":       true,
-	"cols":        true,
-	"rows":        true,
-	"fonts":       true,
-	"headerFont":  true,
+	"title":           true,
+	"author":          true,
+	"theme":           true,
+	"aspectRatio":     true,
+	"layout":          true,
+	"background":      true,
+	"color":           true,
+	"class":           true,
+	"transition":      true,
+	"disabled":        true,
+	"clicks":          true,
+	"preload":         true,
+	"src":             true,
+	"name":            true,
+	"route":           true,
+	"drawings":        true,
+	"ratio":           true,
+	"cols":            true,
+	"rows":            true,
+	"fonts":           true,
+	"headerFont":      true,
+	"showControls":    true,
+	"showSlideNumber": true,
 }
 
 // parseYAMLMap checks if a block is a valid non-empty YAML map.
