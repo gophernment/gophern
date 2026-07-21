@@ -1069,6 +1069,34 @@ func TestSlideDimensions_MalformedFallsBack(t *testing.T) {
 	}
 }
 
+func TestSlideDimensions_InfinityFallsBack(t *testing.T) {
+	testCases := []struct {
+		name        string
+		aspectRatio string
+	}{
+		{"Inf in numerator", "Inf:9"},
+		{"+Inf in numerator", "+Inf:9"},
+		{"Infinity in numerator", "Infinity:9"},
+		{"infinity lowercase in numerator", "infinity:9"},
+		{"Inf in denominator", "16:Inf"},
+		{"+Inf in denominator", "16:+Inf"},
+		{"Infinity in denominator", "16:Infinity"},
+		{"infinity lowercase in denominator", "16:infinity"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			pres, err := parseFromString(t, "---\naspectRatio: \""+tc.aspectRatio+"\"\n---\n# Slide 1")
+			if err != nil {
+				t.Fatalf("parse failed: %v", err)
+			}
+			if pres.SlideWidthPx != 960 || pres.SlideHeightPx != 540 {
+				t.Errorf("expected fallback 960x540 for %q, got %dx%d", tc.aspectRatio, pres.SlideWidthPx, pres.SlideHeightPx)
+			}
+		})
+	}
+}
+
 func TestGoogleFontsURL(t *testing.T) {
 	t.Run("builds URL from global sans and mono fonts", func(t *testing.T) {
 		tmpFile, err := os.CreateTemp("", "slides-gfonts-*.md")

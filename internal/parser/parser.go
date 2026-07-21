@@ -44,7 +44,7 @@ func computeSlideDimensions(aspectRatio string) (width, height int) {
 	if len(parts) == 2 {
 		w, errW := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
 		h, errH := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
-		if errW == nil && errH == nil && w > 0 && h > 0 {
+		if errW == nil && errH == nil && w > 0 && h > 0 && !math.IsInf(w, 0) && !math.IsInf(h, 0) {
 			return baseSlideWidthPx, int(math.Round(baseSlideWidthPx * h / w))
 		}
 	}
