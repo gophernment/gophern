@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"time"
@@ -42,10 +44,20 @@ func Export(markdownPath, outputPath string) error {
 	}
 	defer os.Remove(tmpHTMLPath)
 
+	// Serve the deck's own directory (which now also contains tmpHTMLPath)
+	// over HTTP instead of navigating to it via file://, so root-absolute
+	// asset references (<img src="/asset/foo.png">, the same convention
+	// `gophern serve` uses) resolve to the deck's asset/ folder exactly as
+	// they do under `gophern serve`, rather than to the filesystem root.
+	deckDir := filepath.Dir(markdownPath)
+	assetServer := httptest.NewServer(http.FileServer(http.Dir(deckDir)))
+	defer assetServer.Close()
+	pageURL := assetServer.URL + "/" + filepath.Base(tmpHTMLPath)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
-	images, err := captureSlides(ctx, tmpHTMLPath, len(pres.Slides), pres.SlideWidthPx, pres.SlideHeightPx, captureDeviceScale)
+	images, err := captureSlides(ctx, pageURL, len(pres.Slides), pres.SlideWidthPx, pres.SlideHeightPx, captureDeviceScale)
 	if err != nil {
 		return err
 	}
@@ -62,8 +74,9 @@ func Export(markdownPath, outputPath string) error {
 }
 
 // renderTempHTML renders the deck via the existing export.html template into
-// a temp file placed next to markdownPath, so the file's relative asset/
-// references resolve when Chrome loads it over file://.
+// a temp file placed next to markdownPath, so the file's relative and
+// root-absolute asset/ references resolve once Export serves this directory
+// over HTTP for the capture.
 func renderTempHTML(markdownPath string, pres *parser.Presentation) (string, error) {
 	cssBytes, err := web.Assets.ReadFile("static/css/styles.css")
 	if err != nil {

@@ -111,7 +111,7 @@ func TestCaptureSlides_OneImagePerSlide(t *testing.T) {
 	const deviceScale = 2.0
 	const wantImgWidth, wantImgHeight = int(cssWidth * deviceScale), int(cssHeight * deviceScale)
 
-	images, err := captureSlides(ctx, htmlPath, 2, cssWidth, cssHeight, deviceScale)
+	images, err := captureSlides(ctx, "file://"+htmlPath, 2, cssWidth, cssHeight, deviceScale)
 	if err != nil {
 		t.Fatalf("captureSlides failed: %v", err)
 	}
@@ -165,7 +165,7 @@ func TestCaptureSlides_PreservesContentProportionsAtHigherDeviceScale(t *testing
 	const cssWidth, cssHeight = 200, 100
 	const deviceScale = 2.0
 
-	images, err := captureSlides(ctx, htmlPath, 1, cssWidth, cssHeight, deviceScale)
+	images, err := captureSlides(ctx, "file://"+htmlPath, 1, cssWidth, cssHeight, deviceScale)
 	if err != nil {
 		t.Fatalf("captureSlides failed: %v", err)
 	}

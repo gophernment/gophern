@@ -74,15 +74,20 @@ Promise.all(Array.from(document.images).map(function(img) {
 })).then(function() { return true; })
 `
 
-// captureSlides renders each slide of the deck at htmlPath (a file:// path
-// already positioned next to its asset/ folder) to a PNG, in slide order.
-// The CSS layout is sized at the deck's native cssWidthPx x cssHeightPx (so
-// content proportions match the live view exactly); deviceScale controls
-// how many physical pixels each CSS pixel rasterizes to (e.g. 2.0 for a
-// sharper, higher-resolution image), so each output image is
-// cssWidthPx*deviceScale x cssHeightPx*deviceScale pixels. slideCount must
-// match the number of ".slide" elements the page renders.
-func captureSlides(ctx context.Context, htmlPath string, slideCount, cssWidthPx, cssHeightPx int, deviceScale float64) ([][]byte, error) {
+// captureSlides renders each slide of the deck at pageURL to a PNG, in slide
+// order. pageURL must be a fully-qualified URL the caller is responsible for
+// constructing (e.g. an http://127.0.0.1:port/... URL served from the
+// deck's own directory, so both relative asset/foo.png and root-absolute
+// /asset/foo.png references resolve exactly as they do under `gophern
+// serve` — a bare file:// URL cannot resolve root-absolute paths, since
+// those resolve against the filesystem root instead of the deck's
+// directory). The CSS layout is sized at the deck's native cssWidthPx x
+// cssHeightPx (so content proportions match the live view exactly);
+// deviceScale controls how many physical pixels each CSS pixel rasterizes
+// to (e.g. 2.0 for a sharper, higher-resolution image), so each output
+// image is cssWidthPx*deviceScale x cssHeightPx*deviceScale pixels.
+// slideCount must match the number of ".slide" elements the page renders.
+func captureSlides(ctx context.Context, pageURL string, slideCount, cssWidthPx, cssHeightPx int, deviceScale float64) ([][]byte, error) {
 	allocCtx, cancel := chromedp.NewExecAllocator(ctx, chromedp.DefaultExecAllocatorOptions[:]...)
 	defer cancel()
 
@@ -95,7 +100,7 @@ func captureSlides(ctx context.Context, htmlPath string, slideCount, cssWidthPx,
 
 	var imagesLoaded bool
 	tasks := chromedp.Tasks{
-		chromedp.Navigate("file://" + htmlPath),
+		chromedp.Navigate(pageURL),
 		chromedp.EmulateViewport(int64(cssWidthPx), int64(cssHeightPx), chromedp.EmulateScale(deviceScale)),
 		chromedp.WaitVisible("#slide-container", chromedp.ByID),
 		chromedp.Evaluate(fmt.Sprintf(`
@@ -108,7 +113,7 @@ func captureSlides(ctx context.Context, htmlPath string, slideCount, cssWidthPx,
 		chromedp.Poll(allImagesLoadedExpr, &imagesLoaded, chromedp.WithPollingTimeout(15*time.Second)),
 	}
 	if err := chromedp.Run(browserCtx, tasks); err != nil {
-		return nil, fmt.Errorf("captureSlides: failed to load %s: %w", htmlPath, err)
+		return nil, fmt.Errorf("captureSlides: failed to load %s: %w", pageURL, err)
 	}
 
 	for i := 0; i < slideCount; i++ {
