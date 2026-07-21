@@ -56,6 +56,24 @@ body { --slide-width: %dpx !important; --slide-height: %dpx !important; }
 .nav-buttons, .progress-bar-container, .slide-number { display: none !important; }
 `
 
+// allImagesLoadedExpr resolves once every <img> currently in the document
+// has either finished loading or failed. All slides' markup is present in
+// the DOM from the initial page load (goToSlide only toggles CSS visibility,
+// it doesn't create/destroy nodes), so waiting for this once before the
+// capture loop covers every slide's images, not just the first one.
+// Without this wait, a slide could be screenshotted before its images (in
+// particular any large asset/ image, or simply one on a slow disk) finished
+// decoding, producing a blank/missing image in that slide's capture.
+const allImagesLoadedExpr = `
+Promise.all(Array.from(document.images).map(function(img) {
+	if (img.complete) return true;
+	return new Promise(function(resolve) {
+		img.addEventListener('load', function() { resolve(true); });
+		img.addEventListener('error', function() { resolve(true); });
+	});
+})).then(function() { return true; })
+`
+
 // captureSlides renders each slide of the deck at htmlPath (a file:// path
 // already positioned next to its asset/ folder) to a PNG, in slide order.
 // The CSS layout is sized at the deck's native cssWidthPx x cssHeightPx (so
@@ -75,6 +93,7 @@ func captureSlides(ctx context.Context, htmlPath string, slideCount, cssWidthPx,
 
 	images := make([][]byte, 0, slideCount)
 
+	var imagesLoaded bool
 	tasks := chromedp.Tasks{
 		chromedp.Navigate("file://" + htmlPath),
 		chromedp.EmulateViewport(int64(cssWidthPx), int64(cssHeightPx), chromedp.EmulateScale(deviceScale)),
@@ -86,6 +105,7 @@ func captureSlides(ctx context.Context, htmlPath string, slideCount, cssWidthPx,
 				document.head.appendChild(style);
 			})();
 		`, styleOverride), nil),
+		chromedp.Poll(allImagesLoadedExpr, &imagesLoaded, chromedp.WithPollingTimeout(15*time.Second)),
 	}
 	if err := chromedp.Run(browserCtx, tasks); err != nil {
 		return nil, fmt.Errorf("captureSlides: failed to load %s: %w", htmlPath, err)
