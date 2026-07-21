@@ -22,6 +22,7 @@ var startExport = func(markdownFile, outputFile string, stdout io.Writer) error 
 
 func main() {
 	if err := run(os.Args, os.Stdout, os.Stderr); err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
 }
