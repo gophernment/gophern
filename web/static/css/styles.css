@@ -90,7 +90,7 @@ body {
   font-weight: 700;
   margin-top: 0;
   margin-bottom: 2rem;
-  color: var(--text-primary);
+  color: var(--slide-text-color, var(--text-primary));
   font-family: var(--font-heading, var(--font-sans));
 }
 
@@ -142,7 +142,7 @@ body {
 .slide.cover h2,
 .slide.cover p {
   font-size: 1.5rem;
-  color: var(--text-secondary);
+  color: var(--slide-text-color, var(--text-secondary));
   font-weight: 400;
   margin-top: 0.5rem;
   max-width: 80%;
@@ -160,7 +160,7 @@ body {
   font-weight: 700;
   margin-top: 0;
   margin-bottom: 2rem;
-  color: var(--text-primary);
+  color: var(--slide-text-color, var(--text-primary));
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding-bottom: 0.75rem;
   letter-spacing: -0.02em;
@@ -194,14 +194,14 @@ body {
 p {
   font-size: 1.15rem;
   line-height: 1.6;
-  color: var(--text-secondary);
+  color: var(--slide-text-color, var(--text-secondary));
   margin-bottom: 1.25rem;
 }
 
 ul, ol {
   font-size: 1.15rem;
   line-height: 1.6;
-  color: var(--text-secondary);
+  color: var(--slide-text-color, var(--text-secondary));
   margin-bottom: 1.5rem;
   padding-left: 2rem;
 }
@@ -211,7 +211,7 @@ li {
 }
 
 strong {
-  color: var(--text-primary);
+  color: var(--slide-text-color, var(--text-primary));
   font-weight: 600;
 }
 
@@ -226,7 +226,7 @@ blockquote {
 blockquote p {
   margin-bottom: 0;
   font-style: italic;
-  color: var(--text-primary);
+  color: var(--slide-text-color, var(--text-primary));
 }
 
 /* Code block and syntax highlighting */
