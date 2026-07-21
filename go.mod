@@ -8,4 +8,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-require github.com/dlclark/regexp2 v1.11.0 // indirect
+require (
+	github.com/dlclark/regexp2 v1.11.0 // indirect
+	github.com/go-pdf/fpdf v0.9.0 // indirect
+)
