@@ -3,6 +3,7 @@ package exporter
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/chromedp/chromedp"
 )
@@ -12,13 +13,16 @@ import (
 // message instead of failing deep inside chromedp on machines without a
 // browser installed.
 func chromeAvailable() bool {
-	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), chromedp.DefaultExecAllocatorOptions[:]...)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	ctx, cancel := chromedp.NewContext(allocCtx)
+	allocCtx, cancel := chromedp.NewExecAllocator(ctx, chromedp.DefaultExecAllocatorOptions[:]...)
 	defer cancel()
 
-	err := chromedp.Run(ctx, chromedp.Navigate("about:blank"))
+	browserCtx, cancel := chromedp.NewContext(allocCtx)
+	defer cancel()
+
+	err := chromedp.Run(browserCtx, chromedp.Navigate("about:blank"))
 	return err == nil
 }
 
@@ -26,8 +30,16 @@ func chromeAvailable() bool {
 // and hides on-screen navigation chrome, so the screenshot shows only slide
 // content at full resolution regardless of what device pixel size the
 // live-view scale-to-fit logic would otherwise pick.
+//
+// --slide-width/--slide-height are set as an inline style on <body> by the
+// real page templates (web/templates/export.html, presentation.html), so the
+// override must target body too: a descendant's own declaration for a custom
+// property always wins over an ancestor's, even an ancestor :root rule with
+// !important. --scale, by contrast, is set on document.documentElement
+// (i.e. :root) by app.js, so overriding it on :root is correct.
 const captureStyleOverrideTemplate = `
-:root { --slide-width: %dpx !important; --slide-height: %dpx !important; --scale: 1 !important; }
+body { --slide-width: %dpx !important; --slide-height: %dpx !important; }
+:root { --scale: 1 !important; }
 * { transition: none !important; }
 .nav-buttons, .progress-bar-container, .slide-number { display: none !important; }
 `
