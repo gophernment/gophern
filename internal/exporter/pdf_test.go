@@ -2,6 +2,7 @@ package exporter
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -48,6 +49,36 @@ func TestBuildPDF_OnePagePerImage(t *testing.T) {
 	}
 	if pageCount != len(images) {
 		t.Errorf("expected %d pages, found %d", len(images), pageCount)
+	}
+}
+
+func TestBuildPDF_PageDimensionsMatchInputPixels(t *testing.T) {
+	images := [][]byte{
+		makeTestPNG(t, 100, 100, color.RGBA{255, 0, 0, 255}),
+	}
+
+	widthPx, heightPx := 960, 540
+	pdfBytes, err := buildPDF(images, widthPx, heightPx)
+	if err != nil {
+		t.Fatalf("buildPDF failed: %v", err)
+	}
+
+	// fpdf writes page size as "/MediaBox [0 0 %.2f %.2f]" in points. Since
+	// buildPDF uses "pt" units, the MediaBox values should equal widthPx and
+	// heightPx exactly, in that order (width first, then height) — not
+	// swapped.
+	wantMediaBox := []byte(fmt.Sprintf("/MediaBox [0 0 %.2f %.2f]", float64(widthPx), float64(heightPx)))
+	if !bytes.Contains(pdfBytes, wantMediaBox) {
+		idx := bytes.Index(pdfBytes, []byte("/MediaBox"))
+		got := "<not found>"
+		if idx >= 0 {
+			end := idx + 40
+			if end > len(pdfBytes) {
+				end = len(pdfBytes)
+			}
+			got = string(pdfBytes[idx:end])
+		}
+		t.Errorf("expected PDF to contain %q, got %q (page dims possibly swapped)", wantMediaBox, got)
 	}
 }
 

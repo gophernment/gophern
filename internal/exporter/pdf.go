@@ -20,8 +20,13 @@ func buildPDF(images [][]byte, widthPx, heightPx int) ([]byte, error) {
 	pageW := float64(widthPx)
 	pageH := float64(heightPx)
 
+	// Use "P" (portrait) orientation even for landscape-shaped inputs: fpdf
+	// treats the Size passed to NewCustom/AddPageFormat as portrait-relative
+	// and swaps Wd/Ht internally when orientation is "L", which would turn a
+	// 960x540 page into a 540x960 one. With "P", fpdf uses Wd/Ht exactly as
+	// given, so the resulting page is precisely pageW x pageH.
 	pdf := fpdf.NewCustom(&fpdf.InitType{
-		OrientationStr: "L",
+		OrientationStr: "P",
 		UnitStr:        "pt",
 		SizeStr:        "",
 		Size:           fpdf.SizeType{Wd: pageW, Ht: pageH},
@@ -34,7 +39,7 @@ func buildPDF(images [][]byte, widthPx, heightPx int) ([]byte, error) {
 
 		imgName := fmt.Sprintf("slide-%d", i)
 		pdf.RegisterImageOptionsReader(imgName, fpdf.ImageOptions{ImageType: "PNG"}, bytes.NewReader(imgBytes))
-		pdf.AddPageFormat("L", fpdf.SizeType{Wd: pageW, Ht: pageH})
+		pdf.AddPageFormat("P", fpdf.SizeType{Wd: pageW, Ht: pageH})
 		pdf.ImageOptions(imgName, 0, 0, pageW, pageH, false, fpdf.ImageOptions{ImageType: "PNG"}, 0, "")
 	}
 
