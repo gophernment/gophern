@@ -74,8 +74,40 @@ func (s *Server) Router() http.Handler {
 func Start(markdownFile, port string, stdout io.Writer) error {
 	s := NewServer(markdownFile)
 	go s.watchFile()
-	fmt.Fprintf(stdout, "Starting server on port %s...\n", port)
+
+	presentationURL := fmt.Sprintf("http://localhost:%s/", port)
+	presenterURL := fmt.Sprintf("http://localhost:%s/presenter", port)
+	if isTerminalWriter(stdout) {
+		presentationURL = terminalHyperlink(presentationURL)
+		presenterURL = terminalHyperlink(presenterURL)
+	}
+	fmt.Fprintf(stdout, "\n  Presentation:  %s\n  Presenter:     %s\n\n  Export to a standalone file:\n    gophern export -o output.html %s\n\n",
+		presentationURL, presenterURL, markdownFile)
+
 	return http.ListenAndServe(":"+port, s.Router())
+}
+
+// isTerminalWriter reports whether w is an *os.File connected to a terminal
+// (as opposed to a redirected file, pipe, or an in-memory buffer used by
+// tests) — hyperlink escape codes should only be emitted for a real TTY.
+func isTerminalWriter(w io.Writer) bool {
+	f, ok := w.(*os.File)
+	if !ok {
+		return false
+	}
+	info, err := f.Stat()
+	if err != nil {
+		return false
+	}
+	return info.Mode()&os.ModeCharDevice != 0
+}
+
+// terminalHyperlink wraps a URL in an OSC 8 escape sequence so terminals
+// that support it (iTerm2, Terminal.app, Windows Terminal, ...) render it
+// as a clickable link. Which modifier key triggers the click is up to the
+// terminal emulator, not something this program can control.
+func terminalHyperlink(url string) string {
+	return "\x1b]8;;" + url + "\x1b\\" + url + "\x1b]8;;\x1b\\"
 }
 
 func (s *Server) watchFile() {
