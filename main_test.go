@@ -85,11 +85,11 @@ func TestCLIExportSuccess(t *testing.T) {
 }
 
 func TestCLIExportCustomOutput(t *testing.T) {
-	output, err := runCLI("export", "-o", "out.html", "test.md")
+	output, err := runCLI("export", "-o", "out.pdf", "test.md")
 	if err != nil {
 		t.Fatalf("expected no error, got: %v (output: %s)", err, output)
 	}
-	if !strings.Contains(output, "Exporting test.md to out.html...") {
+	if !strings.Contains(output, "Exporting test.md to out.pdf...") {
 		t.Errorf("expected export message with custom output path, got: %s", output)
 	}
 }

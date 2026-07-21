@@ -12,11 +12,16 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentIndex = 0;
 
   // Aspect Ratio Scaling (dimensions come from --slide-width/--slide-height,
-  // set per-deck in the page's inline body style from the parsed aspectRatio)
+  // set per-deck in the page's inline body style from the parsed aspectRatio).
+  // Read the computed style from #slide-container (a descendant of <body>),
+  // not document.documentElement (<html>): CSS custom properties only
+  // inherit downward, so <html> never sees body's inline override and would
+  // always report the :root default (960/540) regardless of the deck's
+  // actual aspectRatio.
   function updateScale() {
-    const rootStyle = getComputedStyle(document.documentElement);
-    const targetWidth = parseFloat(rootStyle.getPropertyValue('--slide-width')) || 960;
-    const targetHeight = parseFloat(rootStyle.getPropertyValue('--slide-height')) || 540;
+    const containerStyle = getComputedStyle(container);
+    const targetWidth = parseFloat(containerStyle.getPropertyValue('--slide-width')) || 960;
+    const targetHeight = parseFloat(containerStyle.getPropertyValue('--slide-height')) || 540;
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
 

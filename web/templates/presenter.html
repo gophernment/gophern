@@ -145,11 +145,11 @@
             justify-content: space-between;
         }
 
-        /* 16:9 Previews */
+        /* Slide previews (arbitrary deck aspect ratio) */
         .preview-viewport-wrapper {
             position: relative;
             width: 100%;
-            aspect-ratio: calc(var(--slide-width) / var(--slide-height));
+            aspect-ratio: {{ .SlideWidthPx }} / {{ .SlideHeightPx }};
             background: var(--bg-main);
             border: 1px solid var(--border-slide);
             border-radius: 12px;
@@ -162,8 +162,8 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 960px;
-            height: 540px;
+            width: {{ .SlideWidthPx }}px;
+            height: {{ .SlideHeightPx }}px;
             transform-origin: top left;
         }
 
@@ -334,11 +334,11 @@
                 const nextWrapper = document.getElementById('next-wrapper');
 
                 if (currentWrapper) {
-                    const scale = currentWrapper.clientWidth / 960;
+                    const scale = currentWrapper.clientWidth / {{ .SlideWidthPx }};
                     document.documentElement.style.setProperty('--current-scale', scale.toString());
                 }
                 if (nextWrapper) {
-                    const scale = nextWrapper.clientWidth / 960;
+                    const scale = nextWrapper.clientWidth / {{ .SlideWidthPx }};
                     document.documentElement.style.setProperty('--next-scale', scale.toString());
                 }
             }

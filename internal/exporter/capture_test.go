@@ -3,6 +3,7 @@ package exporter
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -31,15 +32,15 @@ func writeCaptureTestDeck(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	htmlPath := filepath.Join(dir, "deck.html")
-	html := `<!DOCTYPE html>
+	html := fmt.Sprintf(`<!DOCTYPE html>
 <html><head><style>
   #slide-container { width: var(--slide-width); height: var(--slide-height); }
-  .slide { display: none; width: 100%; height: 100%; }
+  .slide { display: none; width: 100%%; height: 100%%; }
   .slide.active { display: block; }
   .slide:nth-child(1) { background: red; }
   .slide:nth-child(2) { background: blue; }
 </style></head>
-<body style="--slide-width: 800px; --slide-height: 400px;">
+<body style="--slide-width: %dpx; --slide-height: %dpx;">
   <div id="slide-container">
     <div class="slide active">One</div>
     <div class="slide">Two</div>
@@ -51,7 +52,7 @@ func writeCaptureTestDeck(t *testing.T) string {
       });
     };
   </script>
-</body></html>`
+</body></html>`, captureTestBaseWidth, captureTestBaseHeight)
 	if err := os.WriteFile(htmlPath, []byte(html), 0o644); err != nil {
 		t.Fatalf("failed to write test html: %v", err)
 	}
