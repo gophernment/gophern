@@ -1025,6 +1025,50 @@ showSlideNumber: true
 	})
 }
 
+// parseFromString writes content to a temp .md file and parses it.
+func parseFromString(t *testing.T, content string) (*Presentation, error) {
+	t.Helper()
+	f, err := os.CreateTemp(t.TempDir(), "deck_*.md")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	if _, err := f.WriteString(content); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	f.Close()
+	return ParseMarkdownFile(f.Name())
+}
+
+func TestSlideDimensions_Default16x9(t *testing.T) {
+	pres, err := parseFromString(t, "# Slide 1")
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if pres.SlideWidthPx != 960 || pres.SlideHeightPx != 540 {
+		t.Errorf("expected 960x540, got %dx%d", pres.SlideWidthPx, pres.SlideHeightPx)
+	}
+}
+
+func TestSlideDimensions_4x3(t *testing.T) {
+	pres, err := parseFromString(t, "---\naspectRatio: \"4:3\"\n---\n# Slide 1")
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if pres.SlideWidthPx != 960 || pres.SlideHeightPx != 720 {
+		t.Errorf("expected 960x720, got %dx%d", pres.SlideWidthPx, pres.SlideHeightPx)
+	}
+}
+
+func TestSlideDimensions_MalformedFallsBack(t *testing.T) {
+	pres, err := parseFromString(t, "---\naspectRatio: \"garbage\"\n---\n# Slide 1")
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if pres.SlideWidthPx != 960 || pres.SlideHeightPx != 540 {
+		t.Errorf("expected fallback 960x540, got %dx%d", pres.SlideWidthPx, pres.SlideHeightPx)
+	}
+}
+
 func TestGoogleFontsURL(t *testing.T) {
 	t.Run("builds URL from global sans and mono fonts", func(t *testing.T) {
 		tmpFile, err := os.CreateTemp("", "slides-gfonts-*.md")

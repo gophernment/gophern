@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bytes"
+	"math"
 	"net/url"
 	"os"
 	"regexp"
@@ -30,6 +31,26 @@ const (
 	DefaultMonoFallback = `'Fira Code', Consolas, Monaco, 'Courier New', monospace`
 )
 
+// baseSlideWidthPx is the reference width (in px) that slide height is
+// derived from for any configured aspect ratio. 960 matches the
+// long-standing default 16:9 slide size (960x540).
+const baseSlideWidthPx = 960
+
+// computeSlideDimensions parses an "W:H" aspect ratio string (e.g. "16:9",
+// "4:3") into pixel dimensions at a fixed base width. Malformed or empty
+// input falls back to the 16:9 default (960x540).
+func computeSlideDimensions(aspectRatio string) (width, height int) {
+	parts := strings.SplitN(aspectRatio, ":", 2)
+	if len(parts) == 2 {
+		w, errW := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+		h, errH := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+		if errW == nil && errH == nil && w > 0 && h > 0 {
+			return baseSlideWidthPx, int(math.Round(baseSlideWidthPx * h / w))
+		}
+	}
+	return baseSlideWidthPx, 540
+}
+
 // Presentation represents the parsed presentation document.
 type Presentation struct {
 	Title       string      `yaml:"title"`
@@ -53,6 +74,12 @@ type Presentation struct {
 	// custom font is set. Never used by export (self-contained output has
 	// no network dependency).
 	GoogleFontsURL string
+
+	// SlideWidthPx and SlideHeightPx are computed from AspectRatio at a
+	// fixed base width of 960px. Used by PDF capture/assembly (Task 4) and
+	// template rendering (Task 2) to size slides correctly.
+	SlideWidthPx  int
+	SlideHeightPx int
 }
 
 // FontsConfig holds the deck-wide font family overrides.
@@ -227,6 +254,7 @@ func ParseMarkdownFile(path string) (*Presentation, error) {
 	}
 
 	pres.GoogleFontsURL = buildGoogleFontsURL(pres)
+	pres.SlideWidthPx, pres.SlideHeightPx = computeSlideDimensions(pres.AspectRatio)
 
 	return pres, nil
 }
