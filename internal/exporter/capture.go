@@ -26,10 +26,22 @@ func chromeAvailable() bool {
 	return err == nil
 }
 
-// captureStyleOverride forces a fixed, unscaled render at widthPx/heightPx
-// and hides on-screen navigation chrome, so the screenshot shows only slide
-// content at full resolution regardless of what device pixel size the
-// live-view scale-to-fit logic would otherwise pick.
+// captureStyleOverride forces a fixed, unscaled render at the deck's native
+// cssWidthPx/cssHeightPx and hides on-screen navigation chrome, so the
+// screenshot shows only slide content regardless of what device pixel size
+// the live-view scale-to-fit logic would otherwise pick.
+//
+// The CSS box size is deliberately kept at the deck's native dimensions
+// (e.g. 960x540), NOT multiplied up for a higher-resolution capture: slide
+// content (font sizes, padding, etc.) is authored in rem/fixed units against
+// that native box, exactly like the live view, which achieves crisp
+// scaling via a CSS transform (--scale) rather than by resizing the box
+// itself. Resizing the box directly (an earlier, buggy version of this
+// override did that) leaves rem-sized content the same absolute size while
+// the box grows, so content shrinks relative to the background. Higher
+// resolution is instead obtained via Chrome's device scale factor
+// (see captureSlides' deviceScale param), which rasterizes the same layout
+// at more physical pixels without changing anything's relative size.
 //
 // --slide-width/--slide-height are set as an inline style on <body> by the
 // real page templates (web/templates/export.html, presentation.html), so the
@@ -45,23 +57,27 @@ body { --slide-width: %dpx !important; --slide-height: %dpx !important; }
 `
 
 // captureSlides renders each slide of the deck at htmlPath (a file:// path
-// already positioned next to its asset/ folder) to a full-resolution PNG at
-// widthPx x heightPx, in slide order. slideCount must match the number of
-// ".slide" elements the page renders.
-func captureSlides(ctx context.Context, htmlPath string, slideCount, widthPx, heightPx int) ([][]byte, error) {
+// already positioned next to its asset/ folder) to a PNG, in slide order.
+// The CSS layout is sized at the deck's native cssWidthPx x cssHeightPx (so
+// content proportions match the live view exactly); deviceScale controls
+// how many physical pixels each CSS pixel rasterizes to (e.g. 2.0 for a
+// sharper, higher-resolution image), so each output image is
+// cssWidthPx*deviceScale x cssHeightPx*deviceScale pixels. slideCount must
+// match the number of ".slide" elements the page renders.
+func captureSlides(ctx context.Context, htmlPath string, slideCount, cssWidthPx, cssHeightPx int, deviceScale float64) ([][]byte, error) {
 	allocCtx, cancel := chromedp.NewExecAllocator(ctx, chromedp.DefaultExecAllocatorOptions[:]...)
 	defer cancel()
 
 	browserCtx, cancel := chromedp.NewContext(allocCtx)
 	defer cancel()
 
-	styleOverride := fmt.Sprintf(captureStyleOverrideTemplate, widthPx, heightPx)
+	styleOverride := fmt.Sprintf(captureStyleOverrideTemplate, cssWidthPx, cssHeightPx)
 
 	images := make([][]byte, 0, slideCount)
 
 	tasks := chromedp.Tasks{
 		chromedp.Navigate("file://" + htmlPath),
-		chromedp.EmulateViewport(int64(widthPx), int64(heightPx)),
+		chromedp.EmulateViewport(int64(cssWidthPx), int64(cssHeightPx), chromedp.EmulateScale(deviceScale)),
 		chromedp.WaitVisible("#slide-container", chromedp.ByID),
 		chromedp.Evaluate(fmt.Sprintf(`
 			(function() {

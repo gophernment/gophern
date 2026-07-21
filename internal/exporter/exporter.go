@@ -15,6 +15,12 @@ import (
 // ChromeAvailableForTest exposes chromeAvailable to external test packages.
 func ChromeAvailableForTest() bool { return chromeAvailable() }
 
+// captureDeviceScale is the device pixel ratio each slide is rasterized at
+// for a sharper PDF, without changing the CSS layout size (see capture.go's
+// captureSlides doc comment for why this must be a rasterization scale, not
+// a change to the slide's CSS box dimensions).
+const captureDeviceScale = 2.0
+
 // Export compiles the markdown presentation file into a single self-contained
 // PDF, with every slide (including any asset/ images it references) captured
 // as a full-resolution image via a locally installed headless Chrome.
@@ -36,16 +42,16 @@ func Export(markdownPath, outputPath string) error {
 	}
 	defer os.Remove(tmpHTMLPath)
 
-	captureWidth := pres.SlideWidthPx * 2
-	captureHeight := pres.SlideHeightPx * 2
-
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
-	images, err := captureSlides(ctx, tmpHTMLPath, len(pres.Slides), captureWidth, captureHeight)
+	images, err := captureSlides(ctx, tmpHTMLPath, len(pres.Slides), pres.SlideWidthPx, pres.SlideHeightPx, captureDeviceScale)
 	if err != nil {
 		return err
 	}
+
+	captureWidth := int(float64(pres.SlideWidthPx) * captureDeviceScale)
+	captureHeight := int(float64(pres.SlideHeightPx) * captureDeviceScale)
 
 	pdfBytes, err := buildPDF(images, captureWidth, captureHeight)
 	if err != nil {
