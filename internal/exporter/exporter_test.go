@@ -1,20 +1,37 @@
 package exporter_test
 
 import (
+	"bytes"
 	"os"
-	"strings"
+	"path/filepath"
 	"testing"
 
 	"github.com/gophernment/gophern/internal/exporter"
 )
 
-func TestExport(t *testing.T) {
-	// Create temporary markdown file
-	tmpMarkdown, err := os.CreateTemp("", "test_deck_*.md")
-	if err != nil {
-		t.Fatalf("failed to create temp markdown file: %v", err)
+func TestExport_ProducesPDFWithOnePagePerSlide(t *testing.T) {
+	if !exporter.ChromeAvailableForTest() {
+		t.Skip("no local Chrome/Chromium found, skipping PDF export test")
 	}
-	defer os.Remove(tmpMarkdown.Name())
+
+	dir := t.TempDir()
+	mdPath := filepath.Join(dir, "deck.md")
+	assetDir := filepath.Join(dir, "asset")
+	if err := os.Mkdir(assetDir, 0o755); err != nil {
+		t.Fatalf("failed to create asset dir: %v", err)
+	}
+	// 1x1 red pixel PNG
+	pngBytes := []byte{
+		0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+		0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xde, 0x00, 0x00, 0x00,
+		0x0c, 0x49, 0x44, 0x41, 0x54, 0x08, 0xd7, 0x63, 0xf8, 0xcf, 0xc0, 0x00,
+		0x00, 0x00, 0x03, 0x00, 0x01, 0x18, 0xdd, 0x8d, 0xb0, 0x00, 0x00, 0x00,
+		0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+	}
+	if err := os.WriteFile(filepath.Join(assetDir, "pic.png"), pngBytes, 0o644); err != nil {
+		t.Fatalf("failed to write test asset: %v", err)
+	}
 
 	content := `---
 title: Exported Test Deck
@@ -22,170 +39,43 @@ author: Gopher
 theme: slate
 ---
 # Slide 1
-Welcome to export mode.
+![pic](asset/pic.png)
 ---
 # Slide 2
 Here is a code block:
 ` + "```go\npackage main\n```" + `
-`
-	if _, err := tmpMarkdown.WriteString(content); err != nil {
-		t.Fatalf("failed to write temp markdown file: %v", err)
-	}
-	tmpMarkdown.Close()
-
-	// Temp output path
-	tmpOutput, err := os.CreateTemp("", "exported_*.html")
-	if err != nil {
-		t.Fatalf("failed to create temp output file: %v", err)
-	}
-	tmpOutput.Close()
-	defer os.Remove(tmpOutput.Name())
-
-	// Export
-	err = exporter.Export(tmpMarkdown.Name(), tmpOutput.Name())
-	if err != nil {
-		t.Fatalf("export failed: %v", err)
-	}
-
-	// Read output html
-	htmlBytes, err := os.ReadFile(tmpOutput.Name())
-	if err != nil {
-		t.Fatalf("failed to read output file: %v", err)
-	}
-	html := string(htmlBytes)
-
-	// Assertions
-	if !strings.Contains(html, "<title>Exported Test Deck</title>") {
-		t.Error("expected html to contain title")
-	}
-	if !strings.Contains(html, "Welcome to export mode.") {
-		t.Error("expected html to contain slide 1 content")
-	}
-	if !strings.Contains(html, "--slide-width") {
-		t.Error("expected html to contain embedded stylesheet CSS styles")
-	}
-	if !strings.Contains(html, `<body style="--slide-width: 960px; --slide-height: 540px;`) {
-		t.Error("expected body style to carry per-deck slide dimensions")
-	}
-	if !strings.Contains(html, "window.goToSlide") {
-		t.Error("expected html to contain embedded navigation JavaScript code")
-	}
-	if !strings.Contains(html, "package") || !strings.Contains(html, "<pre") {
-		t.Error("expected html to contain highlighted code block")
-	}
-}
-
-func TestExportSplitLayout(t *testing.T) {
-	tmpMarkdown, err := os.CreateTemp("", "test_split_deck_*.md")
-	if err != nil {
-		t.Fatalf("failed to create temp markdown file: %v", err)
-	}
-	defer os.Remove(tmpMarkdown.Name())
-
-	content := `---
-layout: "grid-4"
-cols: "60/40"
-rows: "70/30"
 ---
-::tl::
-Top left
-
-::tr::
-Top right
-
-::bl::
-Bottom left
-
-::br::
-Bottom right
+# Slide 3
+Final slide.
 `
-	if _, err := tmpMarkdown.WriteString(content); err != nil {
-		t.Fatalf("failed to write temp markdown file: %v", err)
+	if err := os.WriteFile(mdPath, []byte(content), 0o644); err != nil {
+		t.Fatalf("failed to write markdown: %v", err)
 	}
-	tmpMarkdown.Close()
 
-	tmpOutput, err := os.CreateTemp("", "exported_split_*.html")
-	if err != nil {
-		t.Fatalf("failed to create temp output file: %v", err)
-	}
-	tmpOutput.Close()
-	defer os.Remove(tmpOutput.Name())
-
-	if err := exporter.Export(tmpMarkdown.Name(), tmpOutput.Name()); err != nil {
+	outPath := filepath.Join(dir, "out.pdf")
+	if err := exporter.Export(mdPath, outPath); err != nil {
 		t.Fatalf("export failed: %v", err)
 	}
 
-	htmlBytes, err := os.ReadFile(tmpOutput.Name())
+	pdfBytes, err := os.ReadFile(outPath)
 	if err != nil {
-		t.Fatalf("failed to read output file: %v", err)
+		t.Fatalf("failed to read output pdf: %v", err)
 	}
-	html := string(htmlBytes)
+	if !bytes.HasPrefix(pdfBytes, []byte("%PDF-")) {
+		t.Fatalf("output is not a PDF file")
+	}
+	if len(pdfBytes) < 1024 {
+		t.Errorf("output pdf suspiciously small (%d bytes), image content likely missing", len(pdfBytes))
+	}
 
-	for _, area := range []string{"tl", "tr", "bl", "br"} {
-		if !strings.Contains(html, "grid-area: "+area) {
-			t.Errorf("expected grid-area: %s in exported html", area)
+	// No leftover temp HTML file should remain next to the source markdown.
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("failed to read dir: %v", err)
+	}
+	for _, e := range entries {
+		if filepath.Ext(e.Name()) == ".html" {
+			t.Errorf("leftover temp HTML file not cleaned up: %s", e.Name())
 		}
-	}
-	if !strings.Contains(html, "grid-template-columns: 60fr 40fr") {
-		t.Errorf("expected cols ratio in exported html")
-	}
-	if !strings.Contains(html, "grid-template-rows: 70fr 30fr") {
-		t.Errorf("expected rows ratio in exported html")
-	}
-}
-
-func TestExportFontFields(t *testing.T) {
-	tmpMarkdown, err := os.CreateTemp("", "test_font_deck_*.md")
-	if err != nil {
-		t.Fatalf("failed to create temp markdown file: %v", err)
-	}
-	defer os.Remove(tmpMarkdown.Name())
-
-	content := `---
-title: Font Export Test
-fonts:
-  sans: 'Space Grotesk'
-  mono: 'JetBrains Mono'
----
-# Slide 1
-
----
-headerFont: "Poppins, sans-serif"
----
-# Slide 2
-`
-	if _, err := tmpMarkdown.WriteString(content); err != nil {
-		t.Fatalf("failed to write temp markdown file: %v", err)
-	}
-	tmpMarkdown.Close()
-
-	tmpOutput, err := os.CreateTemp("", "exported_font_*.html")
-	if err != nil {
-		t.Fatalf("failed to create temp output file: %v", err)
-	}
-	tmpOutput.Close()
-	defer os.Remove(tmpOutput.Name())
-
-	if err := exporter.Export(tmpMarkdown.Name(), tmpOutput.Name()); err != nil {
-		t.Fatalf("export failed: %v", err)
-	}
-
-	htmlBytes, err := os.ReadFile(tmpOutput.Name())
-	if err != nil {
-		t.Fatalf("failed to read output file: %v", err)
-	}
-	html := string(htmlBytes)
-
-	if !strings.Contains(html, "--font-sans: Space Grotesk, &#39;Inter&#39;, -apple-system, BlinkMacSystemFont, &#34;Segoe UI&#34;, Roboto, Helvetica, Arial, sans-serif;") {
-		t.Errorf("expected global sans font override with fallback chain in exported html, got: %s", html)
-	}
-	if !strings.Contains(html, "--font-mono: JetBrains Mono, &#39;Fira Code&#39;, Consolas, Monaco, &#39;Courier New&#39;, monospace;") {
-		t.Errorf("expected global mono font override with fallback chain in exported html, got: %s", html)
-	}
-	if !strings.Contains(html, "--font-heading: Poppins, sans-serif, &#39;Inter&#39;, -apple-system, BlinkMacSystemFont, &#34;Segoe UI&#34;, Roboto, Helvetica, Arial, sans-serif;") {
-		t.Errorf("expected per-slide header font override with fallback chain in exported html, got: %s", html)
-	}
-	if strings.Contains(html, "fonts.googleapis.com") {
-		t.Errorf("expected export output to stay self-contained (no Google Fonts network dependency), got: %s", html)
 	}
 }

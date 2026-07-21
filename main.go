@@ -60,9 +60,9 @@ func run(args []string, stdout, stderr io.Writer) error {
 	case "export":
 		exportCmd := flag.NewFlagSet("export", flag.ContinueOnError)
 		exportCmd.SetOutput(stderr)
-		output := exportCmd.String("o", "presentation.html", "Output HTML file path")
+		output := exportCmd.String("o", "presentation.pdf", "Output PDF file path")
 		exportCmd.Usage = func() {
-			fmt.Fprintln(exportCmd.Output(), "Usage: gophern export [-o output.html] <file.md>")
+			fmt.Fprintln(exportCmd.Output(), "Usage: gophern export [-o output.pdf] <file.md>")
 			fmt.Fprintln(exportCmd.Output(), "Options:")
 			exportCmd.PrintDefaults()
 		}
@@ -90,5 +90,5 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "Usage: gophern <command> [arguments]")
 	fmt.Fprintln(w, "Commands:")
 	fmt.Fprintln(w, "  serve [-port 8080] <file.md>  Start the presentation server")
-	fmt.Fprintln(w, "  export [-o output.html] <file.md> Export to a single HTML file")
+	fmt.Fprintln(w, "  export [-o output.pdf] <file.md>  Export to a single PDF file")
 }

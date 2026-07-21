@@ -79,7 +79,7 @@ func TestCLIExportSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got: %v (output: %s)", err, output)
 	}
-	if !strings.Contains(output, "Exporting test.md to presentation.html...") {
+	if !strings.Contains(output, "Exporting test.md to presentation.pdf...") {
 		t.Errorf("expected export message, got: %s", output)
 	}
 }

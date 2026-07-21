@@ -1,6 +1,6 @@
 # Gophern 🐹
 
-**Gophern** is a professional, local Markdown presentation engine built with Go and `htmx`. It compiles standard Markdown files into sleek, interactive online slideshows featuring a synchronized presenter console, real-time Server-Sent Events (SSE) state synchronization, and an offline single-file exporter.
+**Gophern** is a professional, local Markdown presentation engine built with Go and `htmx`. It compiles standard Markdown files into sleek, interactive online slideshows featuring a synchronized presenter console, real-time Server-Sent Events (SSE) state synchronization, and a self-contained PDF exporter.
 
 ---
 
@@ -11,7 +11,7 @@
 - **Aspect Ratio Lock**: Strictly maintains a professional 16:9 layout viewport, auto-scaling to fit the browser window.
 - **Presenter Dashboard**: Features a clock, elapsed timer, current/next slide previews, and real-time speaker notes display.
 - **SSE Real-Time Sync**: Synchronizes slide navigation in real-time between the main viewer and presenter console.
-- **Self-Contained Export**: Bundles slides, CSS styles, and JS behavior into a single, portable HTML file that can be opened offline anywhere.
+- **Self-Contained Export**: Renders every slide via a locally installed headless Chrome and assembles them into a single, portable PDF that can be opened offline anywhere.
 
 ---
 
@@ -58,13 +58,13 @@ Navigating slides on either window (using arrow keys, space, or buttons) will au
 A fullscreen toggle button always sits in the bottom-right corner of the **Presentation View**. The prev/next nav buttons and the slide-number indicator (`1 / 12`) are hidden by default — enable them per deck with `showControls` / `showSlideNumber` in the global frontmatter (see [Show/Hide Navigation Controls](#showhide-navigation-controls)).
 
 ### 2. Export Standalone Slide Deck (`export`)
-Export the presentation into a single self-contained HTML file for distribution or offline use:
+Export the presentation into a single self-contained PDF for distribution or offline use:
 
 ```bash
-gophern export [-o output.html] example.md
+gophern export [-o output.pdf] example.md
 ```
 
-The output file has all layout CSS and navigation JS bundled inline. Double-click it to run it directly from your file system (`file://` protocol) without needing a server.
+Each slide is rendered through a locally installed headless Chrome/Chromium (required for `export`; `serve` does not need it) and captured as a full-resolution image, one per PDF page — so the exported file looks exactly like the live view, including gradients, backgrounds, and syntax-highlighted code, with no server or browser needed to view it afterward.
 
 ---
 
@@ -122,7 +122,7 @@ headerFont: "Poppins, sans-serif"
 # This slide's heading uses its own font
 ```
 
-> **Note:** `serve` mode (and `/presenter`) automatically link to [Google Fonts](https://fonts.google.com) for any custom font you set (`fonts.sans`, `fonts.mono`, `headerFont`), so most Google Font names just work — no extra setup needed. This does reach out to Google's CDN over the network. `export` does **not** add this link, to keep the exported file fully self-contained and offline — if the font you named isn't installed on the machine viewing the exported file, it falls back to the built-in stack (`Inter` for sans, `Fira Code` for mono) instead.
+> **Note:** `serve` mode (and `/presenter`) automatically link to [Google Fonts](https://fonts.google.com) for any custom font you set (`fonts.sans`, `fonts.mono`, `headerFont`), so most Google Font names just work — no extra setup needed. This does reach out to Google's CDN over the network. `export` renders with only locally-available or built-in fonts — if the font you named isn't installed on the machine running `export`, the PDF falls back to the built-in stack (`Inter` for sans, `Fira Code` for mono) instead.
 
 #### Multiple fonts / non-Latin scripts (e.g. Thai)
 
