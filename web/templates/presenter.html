@@ -268,14 +268,16 @@
         <div id="slide-info" class="slide-info-pill">Slide - / -</div>
     </header>
 
-    <!-- Off-screen carrier for every slide's raw HTML. presentation.html
-         renders all slides into the DOM permanently (toggling visibility
-         via CSS classes), so a deck-wide theme hack embedded as a raw
-         <style> block in any slide's markdown always takes effect there.
-         The presenter view only ever injects the current/next slide's HTML,
-         so without this carrier such a <style> block silently has no effect
-         unless that specific slide happens to be on screen. -->
-    <div id="deck-style-carrier" style="display:none" aria-hidden="true"></div>
+    <!-- Every slide's Go-template-rendered markup (shared "slideBody" partial
+         with presentation.html/export.html), kept in the DOM permanently.
+         Current/Next previews clone nodes from here instead of re-building
+         slide HTML in JS, so there's a single source of truth for slide
+         markup. This also means a deck-wide <style> block embedded in any
+         slide's markdown always takes effect, regardless of which slide is
+         currently previewed. -->
+    <div id="slide-source" style="display:none" aria-hidden="true">
+        {{ range .Slides }}{{ template "slideBody" . }}{{ end }}
+    </div>
 
     <!-- Main Workspace -->
     <div class="presenter-main">
@@ -326,20 +328,6 @@
             const slides = JSON.parse(document.getElementById('slides-json').textContent);
             let currentIndex = 0;
 
-            // Load every slide's HTML into the hidden carrier once, so any
-            // embedded <style> block takes effect regardless of which slide
-            // is currently previewed (see comment on #deck-style-carrier).
-            const styleCarrier = document.getElementById('deck-style-carrier');
-            if (styleCarrier) {
-                styleCarrier.innerHTML = slides.map(s => {
-                    let html = s.HTMLContent || '';
-                    if (s.Regions) {
-                        html += Object.values(s.Regions).join('');
-                    }
-                    return html;
-                }).join('');
-            }
-
             // Handle scale calculations for current and next slide viewports
             function updatePreviewScales() {
                 const currentWrapper = document.getElementById('current-wrapper');
@@ -358,31 +346,19 @@
             window.addEventListener('resize', updatePreviewScales);
             updatePreviewScales();
 
-            // Keep in sync with parser.DefaultSansFallback (internal/parser/parser.go)
-            const DEFAULT_SANS_FALLBACK = `'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
-
-            // Renders the preview content inside current/next container
+            // Clones the Go-template-rendered slide node from #slide-source
+            // (see comment there) into the current/next preview container,
+            // instead of re-building slide markup from JSON in JS.
+            const slideSource = document.getElementById('slide-source');
             function renderSlideContent(container, slide) {
                 if (!slide) return;
+                const source = slideSource.querySelector(`#slide-${slide.Index}`);
+                if (!source) return;
 
-                let inner = slide.HTMLContent || '';
-                if (slide.Regions && Object.keys(slide.Regions).length > 0) {
-                    const header = slide.HTMLContent ? `<div class="split-header">${slide.HTMLContent}</div>` : '';
-                    let gridStyle = '';
-                    if (slide.ColsCSS) gridStyle += `grid-template-columns: ${slide.ColsCSS};`;
-                    if (slide.RowsCSS) gridStyle += `grid-template-rows: ${slide.RowsCSS};`;
-                    const regions = Object.entries(slide.Regions)
-                        .map(([name, html]) => `<div class="region" style="grid-area: ${name};">${html}</div>`)
-                        .join('');
-                    inner = `${header}<div class="split-grid" style="${gridStyle}">${regions}</div>`;
-                }
-
-                container.innerHTML = `
-                    <div class="slide active ${slide.Layout || 'default'}"
-                         style="${slide.Background ? 'background: ' + slide.Background + ';' : ''} ${slide.Color ? 'color: ' + slide.Color + ';' : ''} ${slide.HeaderFont ? '--font-heading: ' + slide.HeaderFont + ', ' + DEFAULT_SANS_FALLBACK + ';' : ''}">
-                        ${inner}
-                    </div>
-                `;
+                const clone = source.cloneNode(true);
+                clone.classList.add('active');
+                container.innerHTML = '';
+                container.appendChild(clone);
             }
 
             // Update UI components when index changes

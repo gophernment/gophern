@@ -11,22 +11,7 @@
 </head>
 <body style="{{ if .Fonts.Sans }}--font-sans: {{ sansFontFamily .Fonts.Sans }};{{ end }}{{ if .Fonts.Mono }}--font-mono: {{ monoFontFamily .Fonts.Mono }};{{ end }}">
     <div id="slide-container">
-        {{ range .Slides }}
-        <div id="slide-{{ .Index }}" class="slide {{ if .Layout }}{{ .Layout }}{{ else }}default{{ end }}"
-             style="{{ if .Background }}background: {{ .Background }};{{ end }} {{ if .Color }}color: {{ .Color }};{{ end }} {{ if .HeaderFont }}--font-heading: {{ sansFontFamily .HeaderFont }};{{ end }}">
-            <!-- Render slide content as unescaped raw HTML -->
-            {{ if .Regions }}
-            {{ if .HTMLContent }}<div class="split-header">{{ .HTMLContent | safe }}</div>{{ end }}
-            <div class="split-grid" style="{{ if .ColsCSS }}grid-template-columns: {{ .ColsCSS }};{{ end }}{{ if .RowsCSS }}grid-template-rows: {{ .RowsCSS }};{{ end }}">
-                {{ range $name, $html := .Regions }}
-                <div class="region" style="grid-area: {{ $name }};">{{ $html | safe }}</div>
-                {{ end }}
-            </div>
-            {{ else }}
-            {{ .HTMLContent | safe }}
-            {{ end }}
-        </div>
-        {{ end }}
+        {{ range .Slides }}{{ template "slideBody" . }}{{ end }}
 
         <!-- Progress and indicator metrics -->
         <div id="progress-container" class="progress-bar-container">

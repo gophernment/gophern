@@ -29,7 +29,7 @@ func Export(markdownPath, outputPath string) error {
 		"safe":           func(content string) template.HTML { return template.HTML(content) },
 		"sansFontFamily": func(custom string) template.CSS { return template.CSS(custom + ", " + parser.DefaultSansFallback) },
 		"monoFontFamily": func(custom string) template.CSS { return template.CSS(custom + ", " + parser.DefaultMonoFallback) },
-	}).ParseFS(web.Assets, "templates/export.html")
+	}).ParseFS(web.Assets, "templates/export.html", "templates/_slide.html")
 	if err != nil {
 		return err
 	}
