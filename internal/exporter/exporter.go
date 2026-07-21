@@ -36,19 +36,23 @@ func Export(markdownPath, outputPath string) error {
 	}
 
 	type ExportData struct {
-		Title  string
-		Fonts  parser.FontsConfig
-		Slides []parser.Slide
-		CSS    template.CSS
-		JS     template.JS
+		Title         string
+		Fonts         parser.FontsConfig
+		Slides        []parser.Slide
+		CSS           template.CSS
+		JS            template.JS
+		SlideWidthPx  int
+		SlideHeightPx int
 	}
 
 	data := ExportData{
-		Title:  pres.Title,
-		Fonts:  pres.Fonts,
-		Slides: pres.Slides,
-		CSS:    template.CSS(cssBytes),
-		JS:     template.JS(jsBytes),
+		Title:         pres.Title,
+		Fonts:         pres.Fonts,
+		Slides:        pres.Slides,
+		CSS:           template.CSS(cssBytes),
+		JS:            template.JS(jsBytes),
+		SlideWidthPx:  pres.SlideWidthPx,
+		SlideHeightPx: pres.SlideHeightPx,
 	}
 
 	f, err := os.Create(outputPath)

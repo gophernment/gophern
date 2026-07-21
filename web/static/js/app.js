@@ -11,10 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let currentIndex = 0;
 
-  // 16:9 Aspect Ratio Scaling
+  // Aspect Ratio Scaling (dimensions come from --slide-width/--slide-height,
+  // set per-deck in the page's inline body style from the parsed aspectRatio)
   function updateScale() {
-    const targetWidth = 960;
-    const targetHeight = 540;
+    const rootStyle = getComputedStyle(document.documentElement);
+    const targetWidth = parseFloat(rootStyle.getPropertyValue('--slide-width')) || 960;
+    const targetHeight = parseFloat(rootStyle.getPropertyValue('--slide-height')) || 540;
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
 

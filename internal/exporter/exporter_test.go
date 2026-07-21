@@ -64,6 +64,9 @@ Here is a code block:
 	if !strings.Contains(html, "--slide-width") {
 		t.Error("expected html to contain embedded stylesheet CSS styles")
 	}
+	if !strings.Contains(html, `<body style="--slide-width: 960px; --slide-height: 540px;`) {
+		t.Error("expected body style to carry per-deck slide dimensions")
+	}
 	if !strings.Contains(html, "window.goToSlide") {
 		t.Error("expected html to contain embedded navigation JavaScript code")
 	}

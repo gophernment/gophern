@@ -149,7 +149,7 @@
         .preview-viewport-wrapper {
             position: relative;
             width: 100%;
-            aspect-ratio: 16/9;
+            aspect-ratio: calc(var(--slide-width) / var(--slide-height));
             background: var(--bg-main);
             border: 1px solid var(--border-slide);
             border-radius: 12px;
@@ -252,7 +252,7 @@
         }
     </style>
 </head>
-<body style="{{ if .Fonts.Sans }}--font-sans: {{ sansFontFamily .Fonts.Sans }};{{ end }}{{ if .Fonts.Mono }}--font-mono: {{ monoFontFamily .Fonts.Mono }};{{ end }}">
+<body style="--slide-width: {{ .SlideWidthPx }}px; --slide-height: {{ .SlideHeightPx }}px;{{ if .Fonts.Sans }}--font-sans: {{ sansFontFamily .Fonts.Sans }};{{ end }}{{ if .Fonts.Mono }}--font-mono: {{ monoFontFamily .Fonts.Mono }};{{ end }}">
     <!-- Presenter Header -->
     <header class="presenter-header">
         <div class="presentation-title">{{ .Title }}</div>

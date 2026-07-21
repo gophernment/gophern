@@ -355,6 +355,43 @@ background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)"
 	}
 }
 
+func TestPresentationView_SlideDimensionsInBodyStyle(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "test_dimensions_*.md")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	markdownContent := `---
+aspectRatio: "4:3"
+---
+# Slide 1
+`
+	if _, err := tmpFile.WriteString(markdownContent); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	srv := server.NewServer(tmpFile.Name())
+	router := srv.Router()
+
+	req := httptest.NewRequest("GET", "/", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rec.Code)
+	}
+	body := rec.Body.String()
+
+	if !strings.Contains(body, "--slide-width: 960px;") {
+		t.Errorf("expected --slide-width: 960px; in body style, got: %s", body)
+	}
+	if !strings.Contains(body, "--slide-height: 720px;") {
+		t.Errorf("expected --slide-height: 720px; in body style, got: %s", body)
+	}
+}
+
 func TestServerFontFields(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "test_font_*.md")
 	if err != nil {
