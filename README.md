@@ -50,6 +50,12 @@ Start the local HTTP server to display slides and enable presenter synchronizati
 gophern serve [-port 8080] example.md
 ```
 
+The port also defaults to the `PORT` environment variable when `-port` isn't given (`-port` always wins if both are set):
+
+```bash
+PORT=3000 gophern serve example.md
+```
+
 - Open the **Presentation View** at `http://localhost:8080/`.
 - Open the **Presenter Console** at `http://localhost:8080/presenter`.
 

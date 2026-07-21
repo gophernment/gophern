@@ -64,6 +64,28 @@ func TestCLIServeCustomPort(t *testing.T) {
 	}
 }
 
+func TestCLIServePortFromEnv(t *testing.T) {
+	t.Setenv("PORT", "3000")
+	output, err := runCLI("serve", "test.md")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v (output: %s)", err, output)
+	}
+	if !strings.Contains(output, "Serving test.md on port 3000...") {
+		t.Errorf("expected serving message using PORT env var, got: %s", output)
+	}
+}
+
+func TestCLIServeFlagOverridesEnv(t *testing.T) {
+	t.Setenv("PORT", "3000")
+	output, err := runCLI("serve", "-port", "9090", "test.md")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v (output: %s)", err, output)
+	}
+	if !strings.Contains(output, "Serving test.md on port 9090...") {
+		t.Errorf("expected -port flag to override PORT env var, got: %s", output)
+	}
+}
+
 func TestCLIExportNoFile(t *testing.T) {
 	output, err := runCLI("export")
 	if err == nil {

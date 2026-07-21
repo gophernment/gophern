@@ -38,7 +38,11 @@ func run(args []string, stdout, stderr io.Writer) error {
 	case "serve":
 		serveCmd := flag.NewFlagSet("serve", flag.ContinueOnError)
 		serveCmd.SetOutput(stderr)
-		port := serveCmd.String("port", "8080", "Port to serve presentation on")
+		defaultPort := "8080"
+		if envPort := os.Getenv("PORT"); envPort != "" {
+			defaultPort = envPort
+		}
+		port := serveCmd.String("port", defaultPort, "Port to serve presentation on (defaults to $PORT env var, or 8080)")
 		serveCmd.Usage = func() {
 			fmt.Fprintln(serveCmd.Output(), "Usage: gophern serve [-port 8080] <file.md>")
 			fmt.Fprintln(serveCmd.Output(), "Options:")
