@@ -4,7 +4,7 @@
      is defined once in Go templates rather than duplicated in JS. */}}
 {{ define "slideBody" }}
 <div id="slide-{{ .Index }}" class="slide {{ if .Layout }}{{ .Layout }}{{ else }}default{{ end }}"
-     style="{{ if .Background }}background: {{ .Background }};{{ end }} {{ if .Color }}color: {{ .Color }};{{ end }} {{ if .HeaderFont }}--font-heading: {{ sansFontFamily .HeaderFont }};{{ end }}">
+     style="{{ if .Background }}background: {{ .Background | cssValue }};{{ end }} {{ if .Color }}color: {{ .Color | cssValue }};{{ end }} {{ if .HeaderFont }}--font-heading: {{ sansFontFamily .HeaderFont }};{{ end }}">
     {{ if .Regions }}
     {{ if .HTMLContent }}<div class="split-header">{{ .HTMLContent | safe }}</div>{{ end }}
     <div class="split-grid" style="{{ if .ColsCSS }}grid-template-columns: {{ .ColsCSS }};{{ end }}{{ if .RowsCSS }}grid-template-rows: {{ .RowsCSS }};{{ end }}">

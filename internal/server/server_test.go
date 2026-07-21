@@ -319,6 +319,42 @@ Right paragraph.
 	}
 }
 
+func TestServerGradientBackground(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "test_gradient_*.md")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	markdownContent := `---
+layout: "cover"
+background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)"
+---
+# Gradient Slide
+`
+	if _, err := tmpFile.WriteString(markdownContent); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	srv := server.NewServer(tmpFile.Name())
+	router := srv.Router()
+
+	for _, path := range []string{"/", "/presenter"} {
+		req := httptest.NewRequest("GET", path, nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		body := rec.Body.String()
+		if strings.Contains(body, "ZgotmplZ") {
+			t.Errorf("%s: gradient background was stripped by Go's CSS autoescaper (got ZgotmplZ), body: %s", path, body)
+		}
+		if !strings.Contains(body, "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)") {
+			t.Errorf("%s: expected gradient background to render intact, got: %s", path, body)
+		}
+	}
+}
+
 func TestServerFontFields(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "test_font_*.md")
 	if err != nil {
