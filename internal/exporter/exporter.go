@@ -98,23 +98,27 @@ func renderTempHTML(markdownPath string, pres *parser.Presentation) (string, err
 	}
 
 	type ExportData struct {
-		Title         string
-		Fonts         parser.FontsConfig
-		Slides        []parser.Slide
-		SlideWidthPx  int
-		SlideHeightPx int
-		CSS           template.CSS
-		JS            template.JS
+		Title           string
+		Fonts           parser.FontsConfig
+		Slides          []parser.Slide
+		SlideWidthPx    int
+		SlideHeightPx   int
+		CSS             template.CSS
+		JS              template.JS
+		ShowControls    bool
+		ShowSlideNumber bool
 	}
 
 	data := ExportData{
-		Title:         pres.Title,
-		Fonts:         pres.Fonts,
-		Slides:        pres.Slides,
-		SlideWidthPx:  pres.SlideWidthPx,
-		SlideHeightPx: pres.SlideHeightPx,
-		CSS:           template.CSS(cssBytes),
-		JS:            template.JS(jsBytes),
+		Title:           pres.Title,
+		Fonts:           pres.Fonts,
+		Slides:          pres.Slides,
+		SlideWidthPx:    pres.SlideWidthPx,
+		SlideHeightPx:   pres.SlideHeightPx,
+		CSS:             template.CSS(cssBytes),
+		JS:              template.JS(jsBytes),
+		ShowControls:    pres.ShowControls,
+		ShowSlideNumber: pres.ShowSlideNumber,
 	}
 
 	dir := filepath.Dir(markdownPath)

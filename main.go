@@ -19,6 +19,9 @@ var startExport = func(markdownFile, outputFile string, stdout io.Writer) error 
 	return exporter.Export(markdownFile, outputFile)
 }
 
+var startExportHTML = func(markdownFile, outputFile string, stdout io.Writer) error {
+	return exporter.ExportHTML(markdownFile, outputFile)
+}
 
 func main() {
 	if err := run(os.Args, os.Stdout, os.Stderr); err != nil {
@@ -85,6 +88,29 @@ func run(args []string, stdout, stderr io.Writer) error {
 		}
 		return nil
 
+	case "html":
+		htmlCmd := flag.NewFlagSet("html", flag.ContinueOnError)
+		htmlCmd.SetOutput(stderr)
+		output := htmlCmd.String("o", "presentation.html", "Output HTML file path")
+		htmlCmd.Usage = func() {
+			fmt.Fprintln(htmlCmd.Output(), "Usage: gophern html [-o output.html] <file.md>")
+			fmt.Fprintln(htmlCmd.Output(), "Options:")
+			htmlCmd.PrintDefaults()
+		}
+		if err := htmlCmd.Parse(args[2:]); err != nil {
+			return err
+		}
+		if htmlCmd.NArg() < 1 {
+			fmt.Fprintln(stderr, "Error: Markdown file path required for html command")
+			return errors.New("missing markdown file")
+		}
+		markdownFile := htmlCmd.Arg(0)
+		fmt.Fprintf(stdout, "Exporting %s to %s...\n", markdownFile, *output)
+		if err := startExportHTML(markdownFile, *output, stdout); err != nil {
+			return err
+		}
+		return nil
+
 	default:
 		printUsage(stderr)
 		return fmt.Errorf("unknown command: %s", command)
@@ -96,4 +122,5 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "Commands:")
 	fmt.Fprintln(w, "  serve [-port 8080] <file.md>  Start the presentation server")
 	fmt.Fprintln(w, "  export [-o output.pdf] <file.md>  Export to a single PDF file")
+	fmt.Fprintln(w, "  html [-o output.html] <file.md>  Export to a single self-contained HTML file")
 }

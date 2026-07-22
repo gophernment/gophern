@@ -14,6 +14,9 @@ func init() {
 	startExport = func(markdownFile, outputFile string, stdout io.Writer) error {
 		return nil
 	}
+	startExportHTML = func(markdownFile, outputFile string, stdout io.Writer) error {
+		return nil
+	}
 }
 
 func runCLI(args ...string) (string, error) {
@@ -112,6 +115,36 @@ func TestCLIExportCustomOutput(t *testing.T) {
 		t.Fatalf("expected no error, got: %v (output: %s)", err, output)
 	}
 	if !strings.Contains(output, "Exporting test.md to out.pdf...") {
+		t.Errorf("expected export message with custom output path, got: %s", output)
+	}
+}
+
+func TestCLIHTMLNoFile(t *testing.T) {
+	output, err := runCLI("html")
+	if err == nil {
+		t.Fatal("expected error exit code when exporting without file, got nil")
+	}
+	if !strings.Contains(output, "Error: Markdown file path required for html command") {
+		t.Errorf("expected error message for missing markdown file, got: %s", output)
+	}
+}
+
+func TestCLIHTMLSuccess(t *testing.T) {
+	output, err := runCLI("html", "test.md")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v (output: %s)", err, output)
+	}
+	if !strings.Contains(output, "Exporting test.md to presentation.html...") {
+		t.Errorf("expected export message, got: %s", output)
+	}
+}
+
+func TestCLIHTMLCustomOutput(t *testing.T) {
+	output, err := runCLI("html", "-o", "out.html", "test.md")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v (output: %s)", err, output)
+	}
+	if !strings.Contains(output, "Exporting test.md to out.html...") {
 		t.Errorf("expected export message with custom output path, got: %s", output)
 	}
 }
