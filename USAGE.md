@@ -40,21 +40,26 @@ go install github.com/gophernment/gophern@latest
 # or clone the repo and `go build .`
 ```
 
-### Two commands, that's it
+### Three commands, that's it
 ```bash
-gophern serve [-port 8080] USAGE.md   # live server + hot reload
-gophern export [-o output.html] USAGE.md  # single offline HTML file
+gophern serve [-port 8080] USAGE.md        # live server + hot reload
+gophern export [-o output.pdf] USAGE.md    # single PDF, one page per slide
+gophern html [-o output.html] USAGE.md     # single self-contained HTML file
 ```
 
 `serve` starts a local HTTP server with a `/presenter` console and
-auto-reloads whenever you save the `.md` file. `export` bundles the CSS,
-JS, and every slide into one self-contained HTML file you can email or
-host anywhere — no server required to view it.
+auto-reloads whenever you save the `.md` file. `export` drives a local
+headless Chrome to capture each slide and assemble a PDF — the thing to
+hand out or attach to an email. `html` bundles the CSS, JS, and every
+slide into one self-contained HTML file with no server required to view
+it — the thing to host as a static page (e.g. GitHub Pages) so a live
+gophern process isn't required just to view the deck online.
 
 <!--
-Mention that `export` never needs network access at view time — everything
+Mention that `html` never needs network access at view time — everything
 is inlined into the single output file, including the syntax-highlighted
-code blocks.
+code blocks. `export`'s PDF, by contrast, requires a local Chrome/Chromium
+install at build time (not at view time — the PDF itself is static).
 -->
 
 ---
@@ -420,9 +425,10 @@ fonts:
 ```
 
 `gophern serve` and `/presenter` automatically fetch the named font from
-Google Fonts — no extra setup. `gophern export` does **not** fetch fonts
-(to stay a fully offline, self-contained file); an unavailable font falls
-back to the built-in stack (`Inter` / `Fira Code`) instead.
+Google Fonts — no extra setup. `gophern export` and `gophern html` do
+**not** fetch fonts (to stay fully offline, self-contained output); an
+unavailable font falls back to the built-in stack (`Inter` / `Fira Code`)
+instead.
 
 ---
 headerFont: "Poppins, sans-serif"
