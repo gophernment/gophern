@@ -574,20 +574,41 @@ func extractSpeakerNotes(markdown string) (string, string) {
 }
 
 var listItemOpenTagRegex = regexp.MustCompile(`<li>`)
+var fragmentBlockOpenTagRegex = regexp.MustCompile(`<pre[^>]*>|<p>`)
 
-// applyFragmentClasses numbers every <li> goldmark rendered for this slide,
-// in document order starting at 0, and marks it class="fragment" with a
-// data-fragment-index. web/static/js/app.js uses that numbering to reveal
-// list items one at a time on next/prev nav instead of showing the whole
-// list at once. Goldmark never emits attributes on a bare <li> itself (tight
-// or loose list, nesting included), so matching the literal opening tag is
-// safe and doesn't require a full HTML parse.
+// applyFragmentClasses numbers, in document order starting at 0, the units a
+// slide reveals one at a time when it opts into fragments: true, and marks
+// each with class="fragment" plus a data-fragment-index that
+// web/static/js/app.js uses for next/prev stepping.
+//
+// A slide with any <li> fragments only its list items (goldmark never emits
+// attributes on a bare <li>, tight or loose list, nesting included, so
+// matching the literal opening tag is safe without a full HTML parse) —
+// this is the common case (a bullet list revealed line by line) and leaves
+// any plain paragraph/code block on the same slide, such as a static
+// reference link, untouched.
+//
+// A slide with no <li> at all instead fragments its top-level <pre> and <p>
+// blocks (e.g. a sequence of log-line examples), matching how the original
+// reveal.js deck this tool replaced used fragments on non-list content.
+// Fenced code blocks go through ChromaRenderer, which emits an inline
+// style on <pre> (`<pre style="...">`) instead of a bare tag — the class is
+// appended inside that existing tag rather than assuming no attributes.
 func applyFragmentClasses(htmlContent string) string {
+	if strings.Contains(htmlContent, "<li>") {
+		idx := 0
+		return listItemOpenTagRegex.ReplaceAllStringFunc(htmlContent, func(string) string {
+			tag := `<li class="fragment" data-fragment-index="` + strconv.Itoa(idx) + `">`
+			idx++
+			return tag
+		})
+	}
+
 	idx := 0
-	return listItemOpenTagRegex.ReplaceAllStringFunc(htmlContent, func(string) string {
-		tag := `<li class="fragment" data-fragment-index="` + strconv.Itoa(idx) + `">`
+	return fragmentBlockOpenTagRegex.ReplaceAllStringFunc(htmlContent, func(match string) string {
+		attrs := ` class="fragment" data-fragment-index="` + strconv.Itoa(idx) + `">`
 		idx++
-		return tag
+		return match[:len(match)-1] + attrs
 	})
 }
 

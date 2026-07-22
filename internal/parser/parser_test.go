@@ -1021,6 +1021,58 @@ fragments: true
 	}
 }
 
+func TestFragmentsWithoutList(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "slides-fragments-noli-*.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	content := `---
+fragments: true
+---
+
+# Log lines
+
+` + "```" + `sh
+one
+` + "```" + `
+
+or
+
+` + "```" + `sh
+two
+` + "```"
+	if _, err := tmpFile.WriteString(content); err != nil {
+		t.Fatal(err)
+	}
+	tmpFile.Close()
+
+	pres, err := ParseMarkdownFile(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("ParseMarkdownFile failed: %v", err)
+	}
+	if len(pres.Slides) != 1 {
+		t.Fatalf("Expected 1 slide, got %d", len(pres.Slides))
+	}
+
+	html := pres.Slides[0].HTMLContent
+	if !strings.Contains(html, `data-fragment-index="0"`) {
+		t.Errorf("Expected first fragment (pre) at index 0, got %q", html)
+	}
+	if !strings.Contains(html, `<p class="fragment" data-fragment-index="1">or</p>`) {
+		t.Errorf("Expected the 'or' paragraph fragmented at index 1, got %q", html)
+	}
+	if !strings.Contains(html, `data-fragment-index="2"`) {
+		t.Errorf("Expected second pre fragment at index 2, got %q", html)
+	}
+	// The <pre> tags carry chroma's inline style attribute; the class must
+	// be appended to it, not replace it.
+	if !strings.Contains(html, `style="background-color:#fff;" class="fragment" data-fragment-index="0">`) {
+		t.Errorf("Expected fragment class appended after chroma's style attribute, got %q", html)
+	}
+}
+
 func TestControlsVisibilityFields(t *testing.T) {
 	t.Run("default false when unset", func(t *testing.T) {
 		tmpFile, err := os.CreateTemp("", "slides-controls-default-*.md")
