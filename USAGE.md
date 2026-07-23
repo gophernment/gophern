@@ -18,7 +18,7 @@ color: "#ffffff"
 This deck is a real `.md` file — run it with `gophern serve USAGE.md`
 and navigate with **→**, **Space**, or **Page Down**. A fullscreen
 button sits in the bottom-right corner; the prev/next buttons and slide
-number are off by default (turned on for this deck — see slide 18).
+number are off by default (turned on for this deck — see slide 19).
 
 <!--
 This is USAGE.md: a hands-on manual. Every syntax shown on a slide is the
@@ -137,7 +137,7 @@ color: "#f8fafc"
 - `background` — any CSS `background` value (color, gradient, image URL)
 - `color` — the slide's base text color
 - `headerFont` — overrides just this slide's `<h1>` font
-- `fragments` — step-reveal this slide's list items one at a time (see slide 19)
+- `fragments` — step-reveal this slide's list items one at a time (see slide 20)
 
 ## Split-layout-only keys
 - `ratio` — e.g. `"60/40"` for `split-h`/`split-v`, `"30/40/30"` for `split-3`
@@ -209,7 +209,7 @@ markers.
 
 ## Right-ish content
 For precise control over what goes in which column, prefer the newer
-`split-h` layout (slide 11) instead — it lets you address each side
+`split-h` layout (slide 12) instead — it lets you address each side
 explicitly by name.
 
 ```markdown
@@ -274,12 +274,48 @@ func main() {
 ```
 
 ---
+layout: "default"
+background: "#0f172a"
+color: "#f8fafc"
+---
+
+# 10. Images & Assets
+
+Reference images with plain Markdown — a **relative path, no leading `/`**:
+
+```markdown
+![alt text](asset/photo.png)
+```
+
+The file must live in an **`asset/` folder next to the `.md` file** —
+not `assets/` (no `s`), not a subfolder of a subfolder, a **sibling** of
+the deck:
+
+```
+my-deck/
+├── deck.md
+└── asset/
+    └── photo.png
+```
+
+<!--
+The relative path (no leading slash) is what makes this syntax work
+identically across all three commands: `serve` maps `/asset/` to this
+folder over HTTP, `export`'s headless-Chrome capture serves the deck's
+own directory as the static root, and `html`'s self-contained output
+ships no server at all — it keeps the path exactly as written and just
+expects `asset/` copied alongside the output file. A leading-slash
+`/asset/foo.png` breaks under `html` (opened as file://, or hosted at
+any non-root path) — always write it relative.
+-->
+
+---
 layout: "two-cols"
 background: "#0f172a"
 color: "#f8fafc"
 ---
 
-# 10. Inline HTML & Styling
+# 11. Inline HTML & Styling
 
 ## Raw HTML passes through
 Gophern's markdown renderer allows raw HTML tags directly in your slide
@@ -308,7 +344,7 @@ background: "#1e293b"
 color: "#f8fafc"
 ---
 
-# 11. Split Layouts: `split-h`
+# 12. Split Layouts: `split-h`
 
 ::left::
 Divide a slide into named regions with `::name::` markers. `split-h`
@@ -338,7 +374,7 @@ background: "#0f172a"
 color: "#f8fafc"
 ---
 
-# 12. Split Layouts: `split-v`
+# 13. Split Layouts: `split-v`
 
 ::top::
 Same idea as `split-h`, but stacked vertically. Regions are `::top::` and
@@ -364,7 +400,7 @@ background: "#1e293b"
 color: "#f8fafc"
 ---
 
-# 13. Split Layouts: `split-3`
+# 14. Split Layouts: `split-3`
 
 ::left::
 Three columns: `::left::`, `::center::`, `::right::`.
@@ -387,7 +423,7 @@ background: "#0f172a"
 color: "#f8fafc"
 ---
 
-# 14. Split Layouts: `grid-4`
+# 15. Split Layouts: `grid-4`
 
 ::tl::
 A 2×2 grid: `::tl::`, `::tr::`, `::bl::`, `::br::`.
@@ -412,7 +448,7 @@ background: "#1e293b"
 color: "#f8fafc"
 ---
 
-# 15. Custom Fonts: the basics
+# 16. Custom Fonts: the basics
 
 Set the deck's main fonts once, globally:
 
@@ -436,7 +472,7 @@ background: "#0f172a"
 color: "#f8fafc"
 ---
 
-# 16. Custom Fonts: per-slide heading
+# 17. Custom Fonts: per-slide heading
 
 This heading uses `headerFont`, set only on this slide's local frontmatter.
 
@@ -457,7 +493,7 @@ background: "#1e293b"
 color: "#f8fafc"
 ---
 
-# 17. Custom Fonts: หลายฟอนต์ / Thai fallback
+# 18. Custom Fonts: หลายฟอนต์ / Thai fallback
 
 ข้อความไทยผสมกับ English ในสไลด์เดียวกัน — สไลด์นี้ (และทั้งเดค) ใช้
 `fonts.sans: "Poppins, 'Noto Sans Thai'"` ที่ตั้งไว้ใน **global frontmatter**
@@ -487,7 +523,7 @@ background: "#0f172a"
 color: "#f8fafc"
 ---
 
-# 18. Show/Hide Navigation Controls
+# 19. Show/Hide Navigation Controls
 
 The prev/next buttons and the `1 / N` slide-number indicator in the
 **Presentation View** (`serve`, not `/presenter`) are hidden by default.
@@ -516,7 +552,7 @@ color: "#f8fafc"
 fragments: true
 ---
 
-# 19. Fragments: step-reveal list items
+# 20. Fragments: step-reveal list items
 
 Set `fragments: true` in a slide's local frontmatter to reveal that
 slide's list items one at a time instead of all at once.
